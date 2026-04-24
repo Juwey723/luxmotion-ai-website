@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-gold: #c9a860;
+  --color-gold-light: #f0dca0;
+  --color-gold-dim: #8c6f35;
+  --color-bone: #f5f0e6;
+  --color-ink-deepest: #070707;
+  --color-ink-base: #0a0a0a;
+  --color-ink-elevated: #111111;
+
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-gloock), ui-serif, Georgia, serif;
+  --font-serif-italic: var(--font-instrument-italic), ui-serif, Georgia, serif;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+  --background: #070707;
+  --foreground: #f5f0e6;
+  --card: #0e0e0e;
+  --card-foreground: #f5f0e6;
+  --popover: #111111;
+  --popover-foreground: #f5f0e6;
+  --primary: #c9a860;
+  --primary-foreground: #070707;
+  --secondary: #1a1816;
+  --secondary-foreground: #f5f0e6;
+  --muted: #161412;
+  --muted-foreground: #b9aa8a;
+  --accent: #c9a860;
+  --accent-foreground: #070707;
+  --destructive: #d04848;
+  --border: rgba(140, 111, 53, 0.22);
+  --input: rgba(140, 111, 53, 0.22);
+  --ring: #c9a860;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: #c9a860;
+    color: #070707;
+  }
+}
+
+@layer utilities {
+  .text-gold-gradient {
+    background: linear-gradient(
+      180deg,
+      #f0dca0 0%,
+      #c9a860 55%,
+      #8c6f35 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gold-shimmer {
+    background: linear-gradient(
+      90deg,
+      #c9a860 0%,
+      #f0dca0 50%,
+      #c9a860 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .scroll-mt-nav {
+    scroll-margin-top: 5rem;
+  }
+  .grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+}
