@@ -5,11 +5,11 @@ export const SITE_URL = "https://luxmotion-ai-website.vercel.app";
 // Shopify checkout URLs — direct add-to-cart links per pricing tier.
 // Each opens Shopify checkout with the tier's variant pre-loaded.
 export const ORDER_URL_BASIC =
-  "https://8gzp0a-0c.myshopify.com/cart/52905574695191:1";
+  "https://checkout.luxmotionai.com/cart/48568804835545:1";
 export const ORDER_URL_STANDARD =
-  "https://8gzp0a-0c.myshopify.com/cart/52905574727959:1";
+  "https://checkout.luxmotionai.com/cart/48568806047961:1";
 export const ORDER_URL_PREMIUM =
-  "https://8gzp0a-0c.myshopify.com/cart/52905574990103:1";
+  "https://checkout.luxmotionai.com/cart/48568807096537:1";
 
 // Generic "Order Now" CTAs (nav, hero, single-service card, final CTA)
 // all point at Basic — entry price draws the click; buyers can upsell on the cart page.
