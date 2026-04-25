@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Gloock, Instrument_Serif, Outfit } from "next/font/google";
 import "./globals.css";
-import { FAQS, FIVERR_URL, PRICING, SITE_URL } from "@/lib/constants";
+import { FAQS, PRICING, SITE_URL } from "@/lib/constants";
 
 // Gloock is the LCP-critical font (hero h1). preload + swap is already
 // next/font's default — stating both explicitly so it's not silently
@@ -47,7 +47,6 @@ export const metadata: Metadata = {
     "brand video",
     "AI UGC",
     "AI product photography",
-    "Fiverr",
   ],
   openGraph: {
     title: "LuxMotion AI — Cinematic AI Product Videos for Brands",
@@ -72,7 +71,6 @@ const orgLd = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description: SITE_DESCRIPTION,
-  sameAs: [FIVERR_URL],
 };
 
 const serviceLd = {
@@ -88,7 +86,7 @@ const serviceLd = {
     name: p.name,
     price: String(p.price),
     priceCurrency: "USD",
-    url: FIVERR_URL,
+    url: p.cartUrl,
     availability: "https://schema.org/InStock",
   })),
 };

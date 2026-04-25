@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FIVERR_URL, HERO_STRIP } from "@/lib/constants";
+import { HERO_STRIP, ORDER_URL_DEFAULT } from "@/lib/constants";
 import { FadeIn } from "@/components/site/fade-in";
 
 export function Hero() {
@@ -39,7 +39,7 @@ export function Hero() {
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
           <a
-            href={FIVERR_URL}
+            href={ORDER_URL_DEFAULT}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-12 items-center justify-center rounded-full bg-gold px-7 text-[12px] font-semibold uppercase tracking-[0.22em] text-ink-deepest shadow-[0_8px_30px_-10px_rgba(201,168,96,0.55)] transition-all hover:-translate-y-px hover:bg-gold-light hover:shadow-[0_10px_40px_-10px_rgba(240,220,160,0.65)] sm:min-w-[200px]"

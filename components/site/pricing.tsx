@@ -1,6 +1,6 @@
 import { FadeIn } from "@/components/site/fade-in";
 import { SectionHeader } from "@/components/site/services";
-import { FIVERR_URL, PRICING } from "@/lib/constants";
+import { PRICING } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export function Pricing() {
@@ -64,7 +64,7 @@ export function Pricing() {
               </ul>
 
               <a
-                href={FIVERR_URL}
+                href={p.cartUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
@@ -81,7 +81,7 @@ export function Pricing() {
         </div>
 
         <p className="mt-8 text-center text-xs uppercase tracking-[0.22em] text-muted-foreground">
-          Secure payment via Fiverr · 100% commercial-use license
+          Secure Shopify checkout · 100% commercial-use license
         </p>
       </div>
     </FadeIn>

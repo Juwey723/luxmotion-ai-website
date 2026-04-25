@@ -2,8 +2,18 @@
 // metadataBase in app/layout.tsx to "https://luxmotionai.com".
 export const SITE_URL = "https://luxmotion-ai-website.vercel.app";
 
-export const FIVERR_URL =
-  "https://www.fiverr.com/luxmotionai/create-cinematic-ai-product-videos-and-ads-for-your-brand-ef2d";
+// Shopify checkout URLs — direct add-to-cart links per pricing tier.
+// Each opens Shopify checkout with the tier's variant pre-loaded.
+export const ORDER_URL_BASIC =
+  "https://8gzp0a-0c.myshopify.com/cart/52905574695191:1";
+export const ORDER_URL_STANDARD =
+  "https://8gzp0a-0c.myshopify.com/cart/52905574727959:1";
+export const ORDER_URL_PREMIUM =
+  "https://8gzp0a-0c.myshopify.com/cart/52905574990103:1";
+
+// Generic "Order Now" CTAs (nav, hero, single-service card, final CTA)
+// all point at Basic — entry price draws the click; buyers can upsell on the cart page.
+export const ORDER_URL_DEFAULT = ORDER_URL_BASIC;
 
 // TODO: replace with real contact (mailto / Instagram) once available.
 export const COMING_SOON_HREF = "#";
@@ -31,7 +41,7 @@ export const SERVICES: readonly Service[] = [
     blurb:
       "Cinematic product videos with hyper-realistic motion. 10–15 seconds, 1080P, 24-hour delivery.",
     priceFrom: 30,
-    cta: { label: "Order from $30", href: FIVERR_URL, external: true },
+    cta: { label: "Order from $30", href: ORDER_URL_BASIC, external: true },
     badge: null,
   },
   {
@@ -65,14 +75,26 @@ export const SERVICES: readonly Service[] = [
 ];
 
 export const PORTFOLIO = [
-  { src: "/portfolio/tennis-bracelet.mp4", label: "Tennis Bracelet" },
-  { src: "/portfolio/cuban-chain.mp4", label: "Cuban Chain" },
+  {
+    src: "/portfolio/black-moissanite-earrings.mp4",
+    label: "Black Moissanite Earrings",
+  },
   { src: "/portfolio/halo-earrings.mp4", label: "Halo Earrings" },
+  {
+    src: "/portfolio/square-moissanite-earrings.mp4",
+    label: "Square Moissanite Earrings",
+  },
+  { src: "/portfolio/star-stud-chain.mp4", label: "Star Stud Chain" },
   { src: "/portfolio/tennis-chain.mp4", label: "Tennis Chain" },
-  { src: "/portfolio/moissanite-stud.mp4", label: "Moissanite Stud" },
-  { src: "/portfolio/heart-bracelet.mp4", label: "Heart Bracelet" },
-  { src: "/portfolio/star-stud.mp4", label: "Star Stud" },
-  { src: "/portfolio/infinity-cuban.mp4", label: "Infinity Cuban" },
+  {
+    src: "/portfolio/moissanite-heart-bracelet.mp4",
+    label: "Moissanite Heart Bracelet",
+  },
+  { src: "/portfolio/cuban-link-bracelet.mp4", label: "Cuban Link Bracelet" },
+  {
+    src: "/portfolio/infinity-cuban-bracelet.mp4",
+    label: "Infinity Cuban Bracelet",
+  },
 ] as const;
 
 export const STEPS = [
@@ -100,6 +122,7 @@ export type PricingTier = {
   price: number;
   features: readonly string[];
   popular: boolean;
+  cartUrl: string;
 };
 
 export const PRICING: readonly PricingTier[] = [
@@ -115,6 +138,7 @@ export const PRICING: readonly PricingTier[] = [
       "Commercial use license",
     ],
     popular: false,
+    cartUrl: ORDER_URL_BASIC,
   },
   {
     tier: "Standard",
@@ -128,6 +152,7 @@ export const PRICING: readonly PricingTier[] = [
       "Commercial use license",
     ],
     popular: true,
+    cartUrl: ORDER_URL_STANDARD,
   },
   {
     tier: "Premium",
@@ -141,6 +166,7 @@ export const PRICING: readonly PricingTier[] = [
       "Commercial use license",
     ],
     popular: false,
+    cartUrl: ORDER_URL_PREMIUM,
   },
 ];
 
@@ -148,6 +174,10 @@ export const FAQS = [
   {
     q: "How do you make the videos?",
     a: "Using state-of-the-art AI motion generation paired with custom scripting tuned for luxury and e-commerce brands. Every output is licensed for commercial use — you own the final file outright.",
+  },
+  {
+    q: "How do I pay?",
+    a: "All orders are processed securely through Shopify checkout — credit card, Apple Pay, Google Pay, Shop Pay accepted. Once payment is complete, you'll receive a confirmation email and we'll start production within hours.",
   },
   {
     q: "Can you edit footage I already have?",

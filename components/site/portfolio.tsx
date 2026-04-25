@@ -22,7 +22,7 @@ export function Portfolio() {
           single product link.
         </p>
 
-        <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+        <div className="mt-12 grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4 sm:gap-y-8 md:grid-cols-4">
           {PORTFOLIO.map((tile) => (
             <PortfolioTile
               key={tile.src}
@@ -75,31 +75,30 @@ function PortfolioTile({
   };
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      onMouseEnter={play}
-      onMouseLeave={pause}
-      onFocus={play}
-      onBlur={pause}
-      aria-label={`Play ${tile.label} preview`}
-      className="group relative aspect-[9/16] overflow-hidden rounded-md bg-ink-elevated ring-1 ring-border transition-all hover:ring-gold/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-    >
-      <video
-        ref={videoRef}
-        src={tile.src}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-3 text-left text-[11px] font-medium uppercase tracking-[0.22em] text-bone/85 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-      >
+    <figure className="flex flex-col gap-3">
+      <figcaption className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-muted-foreground md:text-[11px]">
         {tile.label}
-      </span>
-    </button>
+      </figcaption>
+      <button
+        type="button"
+        onClick={onOpen}
+        onMouseEnter={play}
+        onMouseLeave={pause}
+        onFocus={play}
+        onBlur={pause}
+        aria-label={`Play ${tile.label} preview`}
+        className="group relative aspect-[9/16] overflow-hidden rounded-md bg-ink-elevated ring-1 ring-border transition-all hover:ring-gold/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+      >
+        <video
+          ref={videoRef}
+          src={tile.src}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+        />
+      </button>
+    </figure>
   );
 }
