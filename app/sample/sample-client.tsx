@@ -38,14 +38,17 @@ export function SampleClient() {
   const startedAt = useRef(0);
 
   // Drive fake-progress + cycling messages while a real request is in flight.
+  // Master tier + Flux preprocessing pipeline empirically runs 90–200s on
+  // ponydilusso jewelry inputs; bias the bar toward the longer end so it
+  // doesn't cap-and-plateau too long on slow generations.
   useEffect(() => {
     if (status !== "loading") return;
-    const expectedSec = 75;
+    const expectedSec = 140;
     const id = setInterval(() => {
       const elapsed = (Date.now() - startedAt.current) / 1000;
       setProgress(Math.min(95, (elapsed / expectedSec) * 100));
       setMessageIdx(
-        Math.min(LOADING_MESSAGES.length - 1, Math.floor(elapsed / 18)),
+        Math.min(LOADING_MESSAGES.length - 1, Math.floor(elapsed / 32)),
       );
     }, 400);
     return () => clearInterval(id);
@@ -285,7 +288,7 @@ function LoadingPanel({
           </AnimatePresence>
         </p>
         <p className="mt-2 text-center text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Usually 30–90 seconds
+          Usually 1–3 minutes
         </p>
       </div>
     </motion.div>
@@ -353,15 +356,14 @@ function UpsellCard() {
     <div className="mt-6 w-full overflow-hidden rounded-2xl border border-gold/55 bg-card p-7 shadow-[0_20px_60px_-30px_rgba(201,168,96,0.4)] lg:p-9">
       <div className="text-center">
         <p className="text-[11px] font-medium uppercase tracking-[0.42em] text-gold">
-          — Like it? Want it polished? —
+          — Like the sample? —
         </p>
         <h2 className="mt-4 font-heading text-3xl text-balance leading-tight text-bone md:text-4xl">
-          Order the cinematic version.
+          The full version is even better.
         </h2>
         <p className="mt-3 max-w-xl mx-auto text-sm leading-relaxed text-muted-foreground">
-          The free sample is a 5-second taste. Paid tiers ship 10–15-second
-          videos with custom scripting, brand-matched motion, revisions, and
-          full commercial-use license.
+          Order a polished 10 or 15-second video, custom-scripted to your brand,
+          with up to 3 revisions and 24-hour delivery — from $30.
         </p>
       </div>
 

@@ -2,14 +2,35 @@ import { fal } from "@fal-ai/client";
 import { kv } from "@vercel/kv";
 import { NextRequest, NextResponse } from "next/server";
 
-// Kling 2.1 standard takes 30–90s. Vercel Pro plan caps function duration at 300s.
+// Pipeline: scrape OG -> Flux dev image-to-image (relight) -> Kling 2.1 Master.
+// Master can take 60–120s; Flux adds 5–15s. Vercel Pro caps function duration at 300s.
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const FAL_MODEL = "fal-ai/kling-video/v2.1/standard/image-to-video";
-const PROMPT =
+
+// Try Master first; fall back to Pro on plan/access errors. Pro supports the
+// same input shape (5/10s duration, 9:16 aspect) and produces decent output at
+// ~1/3 the cost.
+const VIDEO_MODELS = [
+  "fal-ai/kling-video/v2.1/master/image-to-video",
+  "fal-ai/kling-video/v2.1/pro/image-to-video",
+] as const;
+
+// Flux dev image-to-image is the right tool for relighting a product photo
+// while preserving the product itself (controlled by `strength`). The brief
+// suggested `flux-pro/v1.1-ultra`, but that endpoint is text-to-image only —
+// it has no image input, so it can't be used here.
+const FLUX_MODEL = "fal-ai/flux/dev/image-to-image";
+
+const VIDEO_PROMPT =
   "Cinematic luxury product video, hyper-realistic motion, sparkling and glamorous, dark moody background with subtle bokeh, dramatic side-lighting, editorial magazine aesthetic, 4K detail, hero close-up shot";
+
+function fluxPrompt(productPhrase: string): string {
+  const ofPart = productPhrase ? ` of ${productPhrase}` : "";
+  return `Cinematic luxury product photography${ofPart}, dramatic studio lighting, dark moody background with subtle gradient, premium editorial aesthetic, hyper-realistic, sharp focus, professional brand-shot quality, hero composition`;
+}
+
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -35,7 +56,9 @@ function abs(maybeRel: string, base: string): string {
   }
 }
 
-async function scrapeOgImage(url: string): Promise<string | null> {
+async function scrapeProductMeta(
+  url: string,
+): Promise<{ imageUrl: string | null; title: string | null }> {
   const res = await fetch(url, {
     headers: {
       "User-Agent": UA,
@@ -45,24 +68,110 @@ async function scrapeOgImage(url: string): Promise<string | null> {
     cache: "no-store",
     redirect: "follow",
   });
-  if (!res.ok) return null;
+  if (!res.ok) return { imageUrl: null, title: null };
   const html = await res.text();
 
-  const og =
+  let imageUrl: string | null = null;
+  const ogImg =
     html.match(
       /<meta[^>]+property=["']og:image(?::secure_url|:url)?["'][^>]+content=["']([^"']+)["']/i,
     ) ??
     html.match(
       /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url|:url)?["']/i,
     );
-  if (og?.[1]) return abs(og[1], url);
+  if (ogImg?.[1]) imageUrl = abs(ogImg[1], url);
+  if (!imageUrl) {
+    const tw =
+      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ??
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
+    if (tw?.[1]) imageUrl = abs(tw[1], url);
+  }
 
-  const tw =
-    html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
-  if (tw?.[1]) return abs(tw[1], url);
+  let title: string | null = null;
+  const ogTitle =
+    html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+  if (ogTitle?.[1]) title = ogTitle[1];
+  if (!title) {
+    const t = html.match(/<title>([^<]+)<\/title>/i);
+    if (t?.[1]) title = t[1].trim();
+  }
+  if (title) {
+    title = title
+      .replace(/&amp;/g, "&")
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, " ")
+      .trim();
+    // Skip noisy long titles (whole-page tagline) — keep short product names.
+    if (title.length === 0 || title.length > 80) title = null;
+  }
 
-  return null;
+  return { imageUrl, title };
+}
+
+async function preprocessImage(
+  imageUrl: string,
+  productTitle: string | null,
+): Promise<string> {
+  const input = {
+    image_url: imageUrl,
+    prompt: fluxPrompt(productTitle ?? ""),
+    strength: 0.65, // preserve product silhouette while relighting + restyling
+    num_inference_steps: 30,
+    guidance_scale: 4.5,
+  };
+  const result = await fal.subscribe(FLUX_MODEL, {
+    input: input as never,
+    logs: false,
+  });
+  const data = result.data as { images?: { url?: string }[] };
+  const out = data?.images?.[0]?.url;
+  if (!out) throw new Error("Flux preprocessing returned no image URL");
+  return out;
+}
+
+async function generateVideo(imageUrl: string): Promise<string> {
+  let lastErr: unknown = null;
+  for (const model of VIDEO_MODELS) {
+    try {
+      const result = await fal.subscribe(model, {
+        // duration "5" works on both Master and Pro; the brief specified
+        // "default to 5 for the free sample" since paid tiers offer 10/15s.
+        input: {
+          image_url: imageUrl,
+          prompt: VIDEO_PROMPT,
+          duration: "5",
+        } as never,
+        logs: false,
+      });
+      const data = result.data as { video?: { url?: string } };
+      const out = data?.video?.url;
+      if (!out) throw new Error("Kling returned no video URL");
+      return out;
+    } catch (e: unknown) {
+      lastErr = e;
+      const err = e as { message?: string; status?: number; body?: unknown };
+      const msg = String(err.message ?? "").toLowerCase();
+      const planError =
+        err.status === 403 ||
+        msg.includes("plan") ||
+        msg.includes("access denied") ||
+        msg.includes("forbidden") ||
+        msg.includes("not enabled") ||
+        msg.includes("not authorized") ||
+        msg.includes("subscription");
+      if (model.includes("master") && planError) {
+        console.warn(
+          "[generate-sample] Master tier unavailable, falling back to Pro:",
+          err.message ?? String(e),
+        );
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr ?? new Error("All video models failed");
 }
 
 export async function POST(req: NextRequest) {
@@ -107,9 +216,10 @@ export async function POST(req: NextRequest) {
   const emailKey = `email:${email}`;
   const ipKey = `ip:${ip}`;
   const dailyKey = `daily-count:${todayKey()}`;
-  const dailyCap = Number(process.env.DAILY_GENERATION_CAP ?? "50");
+  // Master + Flux pipeline costs ~$1.45/sample. Default cap 20/day = ~$29/day
+  // ceiling. Override via DAILY_GENERATION_CAP env var if you want to flex.
+  const dailyCap = Number(process.env.DAILY_GENERATION_CAP ?? "20");
 
-  // 1. Has this email already used its free sample?
   const emailUsed = await kv.get(emailKey);
   if (emailUsed) {
     return NextResponse.json(
@@ -118,7 +228,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 2. Per-IP abuse counter (incremented on every attempt, resets daily).
   const ipCount = (await kv.incr(ipKey)) as number;
   if (ipCount === 1) await kv.expire(ipKey, 60 * 60 * 24);
   if (ipCount > 5) {
@@ -128,8 +237,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Global daily cap (read-only here; only incremented after a successful generation
-  //    so failed scrapes / fal.ai errors don't burn the budget).
   const dailyCurrent = ((await kv.get(dailyKey)) as number | null) ?? 0;
   if (dailyCurrent >= dailyCap) {
     return NextResponse.json(
@@ -138,10 +245,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Scrape OG image from the product page.
-  let imageUrl: string | null = null;
+  // 1. Scrape OG image + title
+  let scrapedImage: string | null;
+  let productTitle: string | null;
   try {
-    imageUrl = await scrapeOgImage(productUrl);
+    const meta = await scrapeProductMeta(productUrl);
+    scrapedImage = meta.imageUrl;
+    productTitle = meta.title;
   } catch (e) {
     console.error("[generate-sample] OG scrape error:", e);
     return NextResponse.json(
@@ -149,39 +259,40 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (!imageUrl) {
+  if (!scrapedImage) {
     return NextResponse.json(
       { error: "Couldn't read your product image. Try a different URL or order direct." },
       { status: 400 },
     );
   }
 
-  // 5. Generate the sample via fal.ai (Kling 2.1 standard, 5-second 9:16).
-  let videoUrl = "";
+  // 2. Pre-process via Flux. Fall back to the raw image if Flux fails so the
+  //    user still gets a video — quality just steps down a notch.
+  let processedImage: string;
+  let preprocessed = false;
   try {
-    // @fal-ai/client's TS types map this endpoint to the v2-master input shape
-    // (which omits `aspect_ratio`). The v2.1/standard endpoint does accept it
-    // per fal.ai's published API, so we cast through `never` to bypass.
-    const falInput = {
-      image_url: imageUrl,
-      prompt: PROMPT,
-      duration: "5",
-      aspect_ratio: "9:16",
-    };
-    const result = await fal.subscribe(FAL_MODEL, {
-      input: falInput as never,
-      logs: false,
-    });
-    const data = result.data as { video?: { url?: string } };
-    videoUrl = data?.video?.url ?? "";
-    if (!videoUrl) throw new Error("fal.ai returned no video URL");
+    processedImage = await preprocessImage(scrapedImage, productTitle);
+    preprocessed = true;
   } catch (e: unknown) {
-    const err = e as { message?: string; body?: unknown; status?: number };
+    const err = e as { message?: string };
+    console.warn(
+      "[generate-sample] Flux preprocessing failed, using raw image:",
+      err.message ?? String(e),
+    );
+    processedImage = scrapedImage;
+  }
+
+  // 3. Generate video via Kling Master (with Pro fallback on plan errors)
+  let videoUrl: string;
+  try {
+    videoUrl = await generateVideo(processedImage);
+  } catch (e: unknown) {
+    const err = e as { message?: string; status?: number; body?: unknown };
     console.error(
-      "[generate-sample] fal.ai error:",
+      "[generate-sample] video generation failed:",
       err.status ?? "",
       err.message ?? String(e),
-      err.body ? JSON.stringify(err.body) : "",
+      err.body ? JSON.stringify(err.body).slice(0, 500) : "",
     );
     return NextResponse.json(
       { error: "Generation failed. Try a different product image, or DM @luxmotionai for help." },
@@ -189,7 +300,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 6. Commit success: increment daily counter, mark email as used, log entry.
+  // 4. Commit success
   const newDaily = (await kv.incr(dailyKey)) as number;
   if (newDaily === 1) await kv.expire(dailyKey, 60 * 60 * 30);
   await kv.set(emailKey, "1", { ex: 60 * 60 * 24 * 30 });
@@ -200,11 +311,14 @@ export async function POST(req: NextRequest) {
       productUrl,
       ip,
       videoUrl,
-      productImage: imageUrl,
+      scrapedImage,
+      processedImage,
+      preprocessed,
+      productTitle,
       ts: new Date().toISOString(),
     }),
     { ex: 60 * 60 * 24 * 90 },
   );
 
-  return NextResponse.json({ videoUrl, productImage: imageUrl });
+  return NextResponse.json({ videoUrl, productImage: processedImage });
 }
