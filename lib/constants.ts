@@ -1,3 +1,7 @@
+// TODO: when luxmotionai.com DNS is wired up, flip this constant AND
+// metadataBase in app/layout.tsx to "https://luxmotionai.com".
+export const SITE_URL = "https://luxmotion-ai-website.vercel.app";
+
 export const FIVERR_URL =
   "https://www.fiverr.com/luxmotionai/create-cinematic-ai-product-videos-and-ads-for-your-brand-ef2d";
 
