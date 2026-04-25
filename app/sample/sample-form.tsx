@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
 import {
   ORDER_URL_BASIC,
   ORDER_URL_DEFAULT,
@@ -11,78 +12,45 @@ import {
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-const LOADING_MESSAGES = [
-  "Reading your product page…",
-  "Analyzing the product image…",
-  "Generating cinematic motion…",
-  "Polishing the final cut…",
-] as const;
-
 const TIER_URLS: Record<"Basic" | "Standard" | "Premium", string> = {
   Basic: ORDER_URL_BASIC,
   Standard: ORDER_URL_STANDARD,
   Premium: ORDER_URL_PREMIUM,
 };
 
-type Status = "idle" | "loading" | "result" | "error";
+type Status = "idle" | "submitting" | "success" | "error";
 
-export function SampleClient() {
+export function SampleForm() {
   const [productUrl, setProductUrl] = useState("");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [messageIdx, setMessageIdx] = useState(0);
-  const startedAt = useRef(0);
-
-  // Drive fake-progress + cycling messages while a real request is in flight.
-  // Master tier + Flux preprocessing pipeline empirically runs 90–200s on
-  // ponydilusso jewelry inputs; bias the bar toward the longer end so it
-  // doesn't cap-and-plateau too long on slow generations.
-  useEffect(() => {
-    if (status !== "loading") return;
-    const expectedSec = 140;
-    const id = setInterval(() => {
-      const elapsed = (Date.now() - startedAt.current) / 1000;
-      setProgress(Math.min(95, (elapsed / expectedSec) * 100));
-      setMessageIdx(
-        Math.min(LOADING_MESSAGES.length - 1, Math.floor(elapsed / 32)),
-      );
-    }, 400);
-    return () => clearInterval(id);
-  }, [status]);
+  const [submittedEmail, setSubmittedEmail] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
-    setVideoUrl(null);
-    setStatus("loading");
-    setProgress(0);
-    setMessageIdx(0);
-    startedAt.current = Date.now();
+    setStatus("submitting");
 
     try {
-      const res = await fetch("/api/generate-sample", {
+      const res = await fetch("/api/sample-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productUrl: productUrl.trim(),
           email: email.trim(),
+          name: name.trim(),
+          notes: notes.trim(),
         }),
       });
-      const data = (await res.json()) as { videoUrl?: string; error?: string };
-      if (!res.ok) {
-        throw new Error(data?.error ?? "Something went wrong.");
-      }
-      setProgress(100);
-      setVideoUrl(data.videoUrl ?? null);
-      setElapsedSec(Math.round((Date.now() - startedAt.current) / 1000));
-      setStatus("result");
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok) throw new Error(data?.error ?? "Something went wrong.");
+      setSubmittedEmail(email.trim());
+      setStatus("success");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Generation failed.";
-      setErrorMsg(msg);
+      setErrorMsg(err instanceof Error ? err.message : "Submission failed.");
       setStatus("error");
     }
   }
@@ -90,9 +58,6 @@ export function SampleClient() {
   function reset() {
     setStatus("idle");
     setErrorMsg(null);
-    setVideoUrl(null);
-    setProgress(0);
-    setMessageIdx(0);
   }
 
   return (
@@ -127,49 +92,41 @@ export function SampleClient() {
           transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="font-serif-italic mt-6 max-w-3xl text-balance text-2xl text-bone/85 md:text-3xl"
         >
-          Drop your product link, get a 5-second cinematic AI sample in under a
-          minute.
+          Drop your product link, get a custom 5-second cinematic AI sample
+          emailed to you in ~30 minutes.
         </motion.p>
 
         <p className="mt-7 max-w-2xl text-balance text-[15px] leading-relaxed text-muted-foreground md:text-base">
-          No credit card. No signup beyond your email. See LuxMotion AI quality
-          applied to YOUR product before you buy.
+          No credit card. Real Higgsfield-quality output. Same pipeline our paid
+          clients get.
         </p>
 
         <div className="mt-12 w-full">
           <AnimatePresence mode="wait">
-            {status === "idle" && (
+            {(status === "idle" || status === "submitting") && (
               <FormPanel
                 key="form"
                 productUrl={productUrl}
                 email={email}
+                name={name}
+                notes={notes}
                 setProductUrl={setProductUrl}
                 setEmail={setEmail}
+                setName={setName}
+                setNotes={setNotes}
                 onSubmit={handleSubmit}
+                submitting={status === "submitting"}
               />
             )}
 
-            {status === "loading" && (
-              <LoadingPanel
-                key="loading"
-                progress={progress}
-                messageIdx={messageIdx}
-              />
-            )}
-
-            {status === "result" && videoUrl && (
-              <ResultPanel
-                key="result"
-                videoUrl={videoUrl}
-                elapsedSec={elapsedSec}
-                onReset={reset}
-              />
+            {status === "success" && (
+              <SuccessPanel key="success" email={submittedEmail} />
             )}
 
             {status === "error" && (
               <ErrorPanel
                 key="error"
-                message={errorMsg ?? "Generation failed."}
+                message={errorMsg ?? "Submission failed."}
                 onRetry={reset}
               />
             )}
@@ -183,16 +140,29 @@ export function SampleClient() {
 function FormPanel({
   productUrl,
   email,
+  name,
+  notes,
   setProductUrl,
   setEmail,
+  setName,
+  setNotes,
   onSubmit,
+  submitting,
 }: {
   productUrl: string;
   email: string;
+  name: string;
+  notes: string;
   setProductUrl: (v: string) => void;
   setEmail: (v: string) => void;
+  setName: (v: string) => void;
+  setNotes: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  submitting: boolean;
 }) {
+  const inputCls =
+    "h-12 w-full rounded-full border border-border bg-ink-elevated px-5 text-[14px] text-bone placeholder:text-muted-foreground/70 transition-colors focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/30 disabled:opacity-60";
+
   return (
     <motion.form
       initial={{ opacity: 0, y: 10 }}
@@ -200,110 +170,73 @@ function FormPanel({
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.4 }}
       onSubmit={onSubmit}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-3"
+      className="mx-auto flex w-full max-w-2xl flex-col gap-3 text-left"
     >
+      <input
+        type="url"
+        required
+        disabled={submitting}
+        value={productUrl}
+        onChange={(e) => setProductUrl(e.target.value)}
+        placeholder="https://yourstore.com/products/…"
+        className={inputCls}
+        aria-label="Product URL"
+      />
       <div className="flex flex-col gap-3 md:flex-row">
-        <input
-          type="url"
-          required
-          value={productUrl}
-          onChange={(e) => setProductUrl(e.target.value)}
-          placeholder="https://yourstore.com/products/…"
-          className="h-12 flex-1 rounded-full border border-border bg-ink-elevated px-5 text-[14px] text-bone placeholder:text-muted-foreground/70 transition-colors focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/30"
-          aria-label="Product URL"
-        />
         <input
           type="email"
           required
+          disabled={submitting}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
-          className="h-12 flex-1 rounded-full border border-border bg-ink-elevated px-5 text-[14px] text-bone placeholder:text-muted-foreground/70 transition-colors focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/30 md:max-w-[260px]"
+          className={inputCls}
           aria-label="Your email"
         />
+        <input
+          type="text"
+          required
+          disabled={submitting}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name"
+          className={inputCls}
+          aria-label="Your name"
+          maxLength={80}
+        />
       </div>
+      <textarea
+        rows={3}
+        disabled={submitting}
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Any specific style preferences? (optional)"
+        className="w-full resize-none rounded-2xl border border-border bg-ink-elevated px-5 py-4 text-[14px] text-bone placeholder:text-muted-foreground/70 transition-colors focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/30 disabled:opacity-60"
+        aria-label="Notes"
+        maxLength={1000}
+      />
       <button
         type="submit"
-        className="mx-auto mt-2 inline-flex h-13 min-h-[52px] w-full items-center justify-center rounded-full bg-gold px-9 text-[12px] font-semibold uppercase tracking-[0.26em] text-ink-deepest shadow-[0_8px_30px_-10px_rgba(201,168,96,0.55)] transition-all hover:-translate-y-px hover:bg-gold-light hover:shadow-[0_10px_40px_-10px_rgba(240,220,160,0.65)] sm:max-w-sm"
+        disabled={submitting}
+        className="mx-auto mt-2 inline-flex h-13 min-h-[52px] w-full items-center justify-center gap-3 rounded-full bg-gold px-9 text-[12px] font-semibold uppercase tracking-[0.26em] text-ink-deepest shadow-[0_8px_30px_-10px_rgba(201,168,96,0.55)] transition-all hover:-translate-y-px hover:bg-gold-light hover:shadow-[0_10px_40px_-10px_rgba(240,220,160,0.65)] disabled:cursor-not-allowed disabled:opacity-80 disabled:hover:translate-y-0 sm:max-w-sm"
       >
-        Generate My Sample
+        {submitting ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink-deepest/30 border-t-ink-deepest" />
+            Sending…
+          </>
+        ) : (
+          "Request My Free Sample"
+        )}
       </button>
-      <p className="mt-3 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-        One free sample per email · Capped at 50 generations per day
+      <p className="mt-3 text-center text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+        One free sample per email · 30-minute typical turnaround
       </p>
     </motion.form>
   );
 }
 
-function LoadingPanel({
-  progress,
-  messageIdx,
-}: {
-  progress: number;
-  messageIdx: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.4 }}
-      className="mx-auto flex w-full max-w-xl flex-col items-center gap-6"
-    >
-      <div className="relative aspect-[9/16] w-full max-w-[260px] overflow-hidden rounded-md bg-ink-elevated ring-1 ring-border">
-        <motion.div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(201,168,96,0.06) 0%, rgba(240,220,160,0.18) 50%, rgba(201,168,96,0.06) 100%)",
-          }}
-          animate={{ backgroundPositionX: ["0%", "200%"] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "linear" }}
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold/30 border-t-gold" />
-        </div>
-      </div>
-
-      <div className="w-full">
-        <div className="h-[3px] w-full overflow-hidden rounded-full bg-border">
-          <motion.div
-            className="h-full bg-gradient-to-r from-gold-dim via-gold to-gold-light"
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          />
-        </div>
-        <p className="mt-4 text-center font-serif-italic text-lg text-bone/85 md:text-xl">
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={messageIdx}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.4 }}
-            >
-              {LOADING_MESSAGES[messageIdx]}
-            </motion.span>
-          </AnimatePresence>
-        </p>
-        <p className="mt-2 text-center text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Usually 1–3 minutes
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
-function ResultPanel({
-  videoUrl,
-  elapsedSec,
-  onReset,
-}: {
-  videoUrl: string;
-  elapsedSec: number;
-  onReset: () => void;
-}) {
+function SuccessPanel({ email }: { email: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -312,38 +245,24 @@ function ResultPanel({
       transition={{ duration: 0.5 }}
       className="mx-auto flex w-full max-w-3xl flex-col items-center gap-7"
     >
-      <video
-        src={videoUrl}
-        autoPlay
-        muted
-        loop
-        playsInline
-        controls
-        className="aspect-[9/16] w-full max-w-[320px] rounded-md bg-black ring-1 ring-gold/40 shadow-[0_20px_60px_-20px_rgba(201,168,96,0.45)]"
-      />
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.45 }}
+        className="flex h-20 w-20 items-center justify-center rounded-full border border-gold/55 bg-gold/10"
+      >
+        <Check className="h-10 w-10 text-gold-light" strokeWidth={2} />
+      </motion.div>
 
       <div className="flex flex-col items-center gap-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-gold">
-          Your free sample · generated in {elapsedSec}s
+        <h2 className="font-heading text-gold-gradient text-balance text-5xl tracking-tight md:text-6xl">
+          On it.
+        </h2>
+        <p className="max-w-xl text-balance text-base leading-relaxed text-bone/85 md:text-lg">
+          We&apos;re producing your sample now. You&apos;ll get an email at{" "}
+          <span className="text-gold">{email}</span> within 30 minutes with the
+          finished video. Check your spam folder if it doesn&apos;t arrive.
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <a
-            href={videoUrl}
-            download="luxmotion-sample.mp4"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-11 items-center justify-center rounded-full border border-gold/45 bg-transparent px-6 text-[12px] font-semibold uppercase tracking-[0.22em] text-bone transition-all hover:border-gold hover:bg-gold/[0.06]"
-          >
-            Download MP4
-          </a>
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-gold"
-          >
-            Generate another?
-          </button>
-        </div>
       </div>
 
       <UpsellCard />
@@ -356,12 +275,12 @@ function UpsellCard() {
     <div className="mt-6 w-full overflow-hidden rounded-2xl border border-gold/55 bg-card p-7 shadow-[0_20px_60px_-30px_rgba(201,168,96,0.4)] lg:p-9">
       <div className="text-center">
         <p className="text-[11px] font-medium uppercase tracking-[0.42em] text-gold">
-          — Like the sample? —
+          — Don&apos;t want to wait? —
         </p>
         <h2 className="mt-4 font-heading text-3xl text-balance leading-tight text-bone md:text-4xl">
-          The full version is even better.
+          Skip the queue.
         </h2>
-        <p className="mt-3 max-w-xl mx-auto text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 mx-auto max-w-xl text-sm leading-relaxed text-muted-foreground">
           Order a polished 10 or 15-second video, custom-scripted to your brand,
           with up to 3 revisions and 24-hour delivery — from $30.
         </p>
