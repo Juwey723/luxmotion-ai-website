@@ -18,11 +18,12 @@ export const ORDER_URL_DEFAULT = ORDER_URL_BASIC;
 // TODO: replace with real contact (mailto / Instagram) once available.
 export const COMING_SOON_HREF = "#";
 
+// Anchor links use absolute "/" prefix so they work from non-home routes (e.g. /sample).
 export const NAV_LINKS = [
-  { label: "Services", href: "#services" },
-  { label: "Portfolio", href: "#portfolio" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Services", href: "/#services" },
+  { label: "Portfolio", href: "/#portfolio" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "FAQ", href: "/#faq" },
 ] as const;
 
 export type Service = {

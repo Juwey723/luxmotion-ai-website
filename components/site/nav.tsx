@@ -26,22 +26,20 @@ export function SiteNav() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:h-[72px] lg:px-10">
         <Link
-          href="#top"
+          href="/"
           className="font-serif-italic text-gold-gradient text-2xl tracking-tight md:text-[28px]"
           aria-label="LuxMotion AI — home"
         >
           LuxMotion AI
         </Link>
 
-        <nav className="hidden items-center gap-9 md:flex" aria-label="Primary">
-          {NAV_LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="text-[12px] font-medium uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-gold"
-            >
-              {l.label}
-            </Link>
+        <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
+          {NAV_LINKS.slice(0, 2).map((l) => (
+            <NavLink key={l.href} href={l.href} label={l.label} />
+          ))}
+          <NavLink href="/sample" label="Free Sample" badge="FREE" />
+          {NAV_LINKS.slice(2).map((l) => (
+            <NavLink key={l.href} href={l.href} label={l.label} />
           ))}
         </nav>
 
@@ -55,5 +53,29 @@ export function SiteNav() {
         </a>
       </div>
     </header>
+  );
+}
+
+function NavLink({
+  href,
+  label,
+  badge,
+}: {
+  href: string;
+  label: string;
+  badge?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group inline-flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-gold"
+    >
+      {label}
+      {badge && (
+        <span className="rounded-sm border border-gold/55 bg-gold/10 px-1.5 py-px text-[8.5px] font-semibold uppercase tracking-[0.22em] text-gold-light transition-colors group-hover:border-gold group-hover:bg-gold/20">
+          {badge}
+        </span>
+      )}
+    </Link>
   );
 }
