@@ -167,7 +167,7 @@ export const TIERS: Record<TierSlug, Tier> = {
     shortName: "Growth",
     price: 2000,
     priceSuffix: "/mo",
-    variantId: "52909661782295",
+    variantId: "48570029932761",
     delivery: "Monthly subscription",
     features: [
       "30 cinematic AI videos / month (mixed styles)",
@@ -193,7 +193,7 @@ export const TIERS: Record<TierSlug, Tier> = {
     shortName: "Scale",
     price: 3500,
     priceSuffix: "/mo",
-    variantId: "52909661880599",
+    variantId: "48570036191449",
     delivery: "Monthly subscription",
     features: [
       "Everything in Growth, plus:",
@@ -222,7 +222,7 @@ export const TIERS: Record<TierSlug, Tier> = {
     shortName: "Dominate",
     price: 5000,
     priceSuffix: "/mo",
-    variantId: "52909661913367",
+    variantId: "48570038026457",
     delivery: "Monthly subscription",
     features: [
       "Everything in Scale, plus:",
