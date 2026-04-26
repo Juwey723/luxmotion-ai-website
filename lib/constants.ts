@@ -76,26 +76,12 @@ export const SERVICES: readonly Service[] = [
 ];
 
 export const PORTFOLIO = [
-  {
-    src: "/portfolio/black-moissanite-earrings.mp4",
-    label: "Black Moissanite Earrings",
-  },
-  { src: "/portfolio/halo-earrings.mp4", label: "Halo Earrings" },
-  {
-    src: "/portfolio/square-moissanite-earrings.mp4",
-    label: "Square Moissanite Earrings",
-  },
-  { src: "/portfolio/star-stud-chain.mp4", label: "Star Stud Chain" },
-  { src: "/portfolio/tennis-chain.mp4", label: "Tennis Chain" },
-  {
-    src: "/portfolio/moissanite-heart-bracelet.mp4",
-    label: "Moissanite Heart Bracelet",
-  },
-  { src: "/portfolio/cuban-link-bracelet.mp4", label: "Cuban Link Bracelet" },
-  {
-    src: "/portfolio/infinity-cuban-bracelet.mp4",
-    label: "Infinity Cuban Bracelet",
-  },
+  { src: "/portfolio/airpods.mp4", label: "AirPods Pro 2" },
+  { src: "/portfolio/water.mp4", label: "Liquid Death" },
+  { src: "/portfolio/soda.mp4", label: "Olipop Soda" },
+  { src: "/portfolio/sneaker.mp4", label: "Allbirds Sneaker" },
+  { src: "/portfolio/mattress.mp4", label: "Casper Mattress" },
+  { src: "/portfolio/keyboard.mp4", label: "Ducky Keyboard" },
 ] as const;
 
 export const STEPS = [

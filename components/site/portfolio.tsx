@@ -22,7 +22,7 @@ export function Portfolio() {
           single product link.
         </p>
 
-        <div className="mt-12 grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4 sm:gap-y-8 md:grid-cols-4">
+        <div className="mt-12 grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4 sm:gap-y-8 md:grid-cols-3">
           {PORTFOLIO.map((tile) => (
             <PortfolioTile
               key={tile.src}
