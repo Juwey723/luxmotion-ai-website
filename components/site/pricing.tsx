@@ -1,37 +1,44 @@
 import Link from "next/link";
 import { FadeIn } from "@/components/site/fade-in";
 import { SectionHeader } from "@/components/site/services";
-import { BUNDLE_TIERS, intakePath, SINGLE_TIERS, type Tier } from "@/lib/tiers";
+import {
+  BUNDLE_TIERS,
+  intakePath,
+  SINGLE_TIERS,
+  type Tier,
+} from "@/lib/tiers";
 import { cn } from "@/lib/utils";
+
+// One unified pricing section with all 5 tiers in a single 6-column grid:
+//
+//   row 1 (lg):  [Basic 1-2] [Standard 3-4] [Premium 5-6]
+//   row 2 (lg):              [Content Pack 2-3] [Managed Social 4-5]
+//
+// Bottom row is centered with empty col-1 and col-6, so it reads as a natural
+// extension of the top row at the same visual altitude rather than a separate
+// "section". Mobile collapses to a single stack.
+const BOTTOM_ROW_START = ["lg:col-start-2", "lg:col-start-4"] as const;
 
 export function Pricing() {
   return (
     <FadeIn id="pricing" className="scroll-mt-nav border-t border-border/60">
       <div className="mx-auto max-w-7xl px-6 py-24 lg:px-10 lg:py-32">
-        {/* Section A — Single-shot videos */}
         <SectionHeader
-          kicker="Single Videos"
-          title="Three tiers. Same cinematic standard."
+          kicker="Pricing"
+          title="Five ways to put your brand on screen."
         />
 
-        <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
+        <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-6">
           {SINGLE_TIERS.map((t) => (
-            <TierCard key={t.slug} tier={t} />
+            <TierCard key={t.slug} tier={t} className="lg:col-span-2" />
           ))}
-        </div>
-
-        {/* Section B — Bundles & recurring service */}
-        <div className="mt-24 lg:mt-32">
-          <SectionHeader
-            kicker="Bundles & Services"
-            title="Higher-volume options."
-          />
-
-          <div className="mx-auto mt-14 grid max-w-5xl items-stretch gap-6 lg:grid-cols-2">
-            {BUNDLE_TIERS.map((t) => (
-              <TierCard key={t.slug} tier={t} />
-            ))}
-          </div>
+          {BUNDLE_TIERS.map((t, i) => (
+            <TierCard
+              key={t.slug}
+              tier={t}
+              className={cn("lg:col-span-2", BOTTOM_ROW_START[i])}
+            />
+          ))}
         </div>
 
         <p className="mt-12 text-center text-xs uppercase tracking-[0.22em] text-muted-foreground">
@@ -42,7 +49,7 @@ export function Pricing() {
   );
 }
 
-function TierCard({ tier }: { tier: Tier }) {
+function TierCard({ tier, className }: { tier: Tier; className?: string }) {
   const isRecurring = tier.priceSuffix === "/mo";
   return (
     <div
@@ -51,6 +58,7 @@ function TierCard({ tier }: { tier: Tier }) {
         tier.popular
           ? "border-gold/55 ring-1 ring-gold/35 lg:scale-[1.015]"
           : "border-border hover:border-gold/40",
+        className,
       )}
     >
       {tier.popular && (

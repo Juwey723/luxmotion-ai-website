@@ -1,7 +1,10 @@
 import { kv } from "@vercel/kv";
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { sendAdminOrderNotification } from "@/lib/emails";
+import {
+  sendAdminOrderNotification,
+  sendManagedSocialPostPayment,
+} from "@/lib/emails";
 import type { IntakeRecord, PaidOrderRecord } from "@/lib/order-types";
 import { isTierSlug } from "@/lib/tiers";
 
@@ -9,8 +12,10 @@ import { isTierSlug } from "@/lib/tiers";
 //   1. Verify the X-Shopify-Hmac-Sha256 header against the raw body bytes.
 //   2. Recover our `intake_id` cart attribute from `note_attributes`.
 //   3. Look up the intake we saved in /api/order-intake.
-//   4. Create a `paid-order:<id>` record + push to `paid-queue:pending`.
-//   5. Send an admin notification email; fire-and-forget, doesn't block 200.
+//   4. Create a `paid-order:<id>` record (denormalizing every tier-specific
+//      field) + push to `paid-queue:pending`.
+//   5. Send the admin notification email; managed-social orders also get a
+//      concierge welcome email with Buffer setup CTA.
 //
 // Response policy (deviates from "always 200" — see project notes):
 //   - HMAC mismatch → 401          (alerts on misconfig / forgery attempts)
@@ -49,8 +54,6 @@ function verifyHmac(rawBody: string, signature: string | null): boolean {
 }
 
 function findIntakeId(payload: ShopifyOrderPaid): string | null {
-  // `note_attributes` is the canonical field on the Order object after
-  // checkout; some payload variants also expose `attributes`. Check both.
   const candidates = [
     ...(payload.note_attributes ?? []),
     ...(payload.attributes ?? []),
@@ -67,11 +70,9 @@ function findIntakeId(payload: ShopifyOrderPaid): string | null {
 export async function POST(req: NextRequest) {
   if (!process.env.SHOPIFY_WEBHOOK_SECRET) {
     console.error("[order-paid] SHOPIFY_WEBHOOK_SECRET not configured");
-    // 500 so Shopify retries — once we add the env var the retries land.
     return NextResponse.json({ error: "Server not configured." }, { status: 500 });
   }
 
-  // Read raw body BEFORE parsing — HMAC must run on the exact bytes Shopify signed.
   const rawBody = await req.text();
   const signature = req.headers.get("x-shopify-hmac-sha256");
 
@@ -87,7 +88,6 @@ export async function POST(req: NextRequest) {
     payload = JSON.parse(rawBody) as ShopifyOrderPaid;
   } catch {
     console.error("[order-paid] valid HMAC but invalid JSON body");
-    // Logical no-op — Shopify-signed garbage; no point retrying.
     return NextResponse.json({ ok: true, note: "invalid-json" });
   }
 
@@ -125,7 +125,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, note: "bad-tier" });
   }
 
-  // Idempotency — Shopify retries are common; treat duplicates as success.
   const orderKey = `paid-order:${intakeId}`;
   let existing: PaidOrderRecord | null = null;
   try {
@@ -146,25 +145,44 @@ export async function POST(req: NextRequest) {
     id: intakeId,
     intakeId,
     tier: intake.tier,
+
+    // Common ─────────────────────────────────────────────────────────
     productUrl: intake.productUrl,
+    productUrls: intake.productUrls,
     brandName: intake.brandName,
     prompt: intake.prompt,
-    socialHandles: intake.socialHandles,
     name: intake.name,
     email: intake.email,
     ip: intake.ip,
+
+    // Tier-specific (carried over verbatim) ──────────────────────────
+    premiumFormat: intake.premiumFormat,
+    styleMix: intake.styleMix,
+    postingPlan: intake.postingPlan,
+    instagramHandle: intake.instagramHandle,
+    tiktokHandle: intake.tiktokHandle,
+    otherSocials: intake.otherSocials,
+    postingFrequency: intake.postingFrequency,
+    postingFrequencyCustom: intake.postingFrequencyCustom,
+    brandVoice: intake.brandVoice,
+    audienceGoals: intake.audienceGoals,
+    bufferEmail: intake.bufferEmail,
+    socialHandles: intake.socialHandles,
+
+    // Shopify metadata ───────────────────────────────────────────────
     shopifyOrderId,
     shopifyOrderName: payload.name,
     shopifyOrderNumber: payload.order_number,
     shopifyAmount: payload.total_price,
     shopifyCurrency: payload.currency,
     paidAt,
+
+    // Status ─────────────────────────────────────────────────────────
     status: "pending",
     createdAt: intake.createdAt,
   };
 
   try {
-    // 90-day TTL on the order record; intake gets marked consumed (housekeeping).
     await kv.set(orderKey, order, { ex: 60 * 60 * 24 * 90 });
     await kv.lpush("paid-queue:pending", intakeId);
 
@@ -182,8 +200,8 @@ export async function POST(req: NextRequest) {
     tier: order.tier,
     brandName: order.brandName,
     productUrl: order.productUrl,
+    productUrls: order.productUrls,
     prompt: order.prompt,
-    socialHandles: order.socialHandles,
     customerName: order.name,
     customerEmail: order.email,
     ip: order.ip,
@@ -192,7 +210,33 @@ export async function POST(req: NextRequest) {
     shopifyAmount: order.shopifyAmount,
     shopifyCurrency: order.shopifyCurrency,
     paidAt: order.paidAt,
+    premiumFormat: order.premiumFormat,
+    styleMix: order.styleMix,
+    postingPlan: order.postingPlan,
+    instagramHandle: order.instagramHandle,
+    tiktokHandle: order.tiktokHandle,
+    otherSocials: order.otherSocials,
+    postingFrequency: order.postingFrequency,
+    postingFrequencyCustom: order.postingFrequencyCustom,
+    brandVoice: order.brandVoice,
+    audienceGoals: order.audienceGoals,
+    bufferEmail: order.bufferEmail,
   }).catch((e) => console.warn("[order-paid] admin email failed:", e));
+
+  // Managed Social customers get the concierge welcome email immediately so
+  // they have Buffer setup instructions while we're producing their first
+  // month of content.
+  if (order.tier === "managed-social") {
+    void sendManagedSocialPostPayment({
+      to: order.email,
+      name: order.name,
+      brandName: order.brandName,
+      instagramHandle: order.instagramHandle ?? null,
+      tiktokHandle: order.tiktokHandle ?? null,
+    }).catch((e) =>
+      console.warn("[order-paid] managed-social welcome email failed:", e),
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

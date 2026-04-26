@@ -1,5 +1,11 @@
 import { Resend } from "resend";
 import { intakePath, SINGLE_TIERS, TIERS, type TierSlug } from "@/lib/tiers";
+import {
+  POSTING_FREQUENCY_LABELS,
+  type PostingFrequency,
+  type PremiumFormat,
+  type StyleMix,
+} from "@/lib/order-types";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -14,6 +20,8 @@ const ADMIN_EMAIL = "jawaduweyda2@gmail.com";
 const SITE = "https://www.luxmotionai.com";
 const PRICING_URL = `${SITE}/#pricing`;
 const REVIEW_MAILTO = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent("Review: LuxMotion AI video")}`;
+const BUFFER_SETUP_MAILTO = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent("Managed Social — Buffer setup help")}`;
+const SUPPORT_MAILTO = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent("LuxMotion AI — Managed Social question")}`;
 
 function intakeAbsoluteUrl(slug: TierSlug): string {
   return `${SITE}${intakePath(slug)}`;
@@ -74,15 +82,41 @@ function ghostButton(href: string, label: string): string {
 
 function tierMiniRow(): string {
   // Email upsell shows the 3 single-shot tiers — bundles + recurring service
-  // are bigger commitments and don't make sense as one-line upsells in a
-  // post-fulfillment email.
+  // are bigger commitments and don't make sense as one-line upsells.
   return SINGLE_TIERS.map(
     (t) =>
       `<a href="${escapeHtml(intakeAbsoluteUrl(t.slug))}" style="display:inline-block;margin:4px 6px 4px 0;padding:8px 14px;border:1px solid rgba(201,168,96,0.5);border-radius:9999px;color:#f5f0e6;text-decoration:none;font-size:12px;letter-spacing:0.16em;text-transform:uppercase">${escapeHtml(t.shortName)} · $${t.price}</a>`,
   ).join("");
 }
 
-// ─── Sample-pipeline emails (existing) ────────────────────────────────────
+function detailsTable(rows: Array<[string, string]>): string {
+  const tableRows = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px 8px 0;color:#8c6f35;text-transform:uppercase;font-size:11px;letter-spacing:0.18em;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:8px 0;color:#f5f0e6;word-break:break-all;font-size:14px;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%">${tableRows}</table>`;
+}
+
+function formatStyleMix(m: StyleMix): string {
+  return `Hyper Motion ${m.hyperMotion} / Soul ${m.soul} / Cinema ${m.cinema}`;
+}
+
+function formatPremiumFormat(f: PremiumFormat): string {
+  return f === "3x10s" ? "Three 10-second videos" : "Two 15-second videos";
+}
+
+function formatPostingFrequency(
+  f: PostingFrequency,
+  custom: string | null | undefined,
+): string {
+  const label = POSTING_FREQUENCY_LABELS[f];
+  if (f === "custom" && custom) return `${label}\n  → ${custom}`;
+  return label;
+}
+
+// ─── Sample-pipeline emails ───────────────────────────────────────────────
 
 export async function sendCustomerConfirmation(args: {
   to: string;
@@ -144,15 +178,9 @@ export async function sendAdminNotification(args: {
     ["IP", args.ip],
     ["Created", args.createdAt],
   ];
-  const tableHtml = rows
-    .map(
-      ([k, v]) =>
-        `<tr><td style="padding:8px 12px 8px 0;color:#8c6f35;text-transform:uppercase;font-size:11px;letter-spacing:0.18em;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:8px 0;color:#f5f0e6;word-break:break-all;font-size:14px">${escapeHtml(v)}</td></tr>`,
-    )
-    .join("");
   const html = emailShell(
     `<h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400;color:#c9a860">New sample request</h1>
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%">${tableHtml}</table>`,
+    ${detailsTable(rows)}`,
     `New sample request from ${args.email}`,
   );
 
@@ -212,7 +240,7 @@ export async function sendCustomerFulfillment(args: {
   }
 }
 
-// ─── Paid-order emails (new) ──────────────────────────────────────────────
+// ─── Paid-order emails ────────────────────────────────────────────────────
 
 export async function sendCustomerOrderFulfillment(args: {
   to: string;
@@ -255,14 +283,14 @@ export async function sendCustomerOrderFulfillment(args: {
   }
 }
 
-export async function sendAdminOrderNotification(args: {
+export interface AdminOrderArgs {
   orderId: string;
   intakeId: string;
   tier: TierSlug;
   brandName: string;
   productUrl: string;
+  productUrls?: string[];
   prompt: string | null;
-  socialHandles: string | null;
   customerName: string;
   customerEmail: string;
   ip: string;
@@ -271,7 +299,26 @@ export async function sendAdminOrderNotification(args: {
   shopifyAmount?: string;
   shopifyCurrency?: string;
   paidAt: string;
-}): Promise<boolean> {
+  // Premium:
+  premiumFormat?: PremiumFormat;
+  // Content Pack:
+  styleMix?: StyleMix;
+  postingPlan?: string | null;
+  // Managed Social:
+  instagramHandle?: string | null;
+  tiktokHandle?: string | null;
+  otherSocials?: string | null;
+  postingFrequency?: PostingFrequency;
+  postingFrequencyCustom?: string | null;
+  brandVoice?: string | null;
+  audienceGoals?: string | null;
+  bufferEmail?: string | null;
+  socialHandles?: string | null; // legacy
+}
+
+export async function sendAdminOrderNotification(
+  args: AdminOrderArgs,
+): Promise<boolean> {
   if (!resend) {
     console.warn("[email] RESEND_API_KEY missing, skipping admin order notification");
     return false;
@@ -281,29 +328,63 @@ export async function sendAdminOrderNotification(args: {
     args.shopifyAmount && args.shopifyCurrency
       ? `${args.shopifyAmount} ${args.shopifyCurrency}`
       : `$${tier.price}${tier.priceSuffix}`;
+
   const rows: Array<[string, string]> = [
     ["Tier", tier.label],
     ["Amount", amountStr],
     ["Brand", args.brandName],
     ["Customer", `${args.customerName} <${args.customerEmail}>`],
-    ["Product URL", args.productUrl],
-    ["Prompt / Notes", args.prompt ?? "(none)"],
-    ["Social Handles", args.socialHandles ?? "(n/a)"],
-    ["Order ID", args.orderId],
-    ["Intake ID", args.intakeId],
-    ["Shopify Order", args.shopifyOrderName ?? args.shopifyOrderId],
-    ["IP", args.ip],
-    ["Paid At", args.paidAt],
   ];
-  const tableHtml = rows
-    .map(
-      ([k, v]) =>
-        `<tr><td style="padding:8px 12px 8px 0;color:#8c6f35;text-transform:uppercase;font-size:11px;letter-spacing:0.18em;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:8px 0;color:#f5f0e6;word-break:break-all;font-size:14px">${escapeHtml(v)}</td></tr>`,
-    )
-    .join("");
+
+  // Tier-specific rows ──────────────────────────────────────────────────
+  if (args.tier === "premium" && args.premiumFormat) {
+    rows.push(["Premium Format", formatPremiumFormat(args.premiumFormat)]);
+  }
+
+  if (args.tier === "content-pack") {
+    if (args.productUrls && args.productUrls.length > 0) {
+      rows.push([
+        `Product URLs (${args.productUrls.length})`,
+        args.productUrls.map((u, i) => `${i + 1}. ${u}`).join("\n"),
+      ]);
+    } else {
+      rows.push(["Product URL", args.productUrl]);
+    }
+    if (args.styleMix) {
+      rows.push(["Style Mix", formatStyleMix(args.styleMix)]);
+    }
+    if (args.postingPlan) {
+      rows.push(["Posting Plan", args.postingPlan]);
+    }
+  } else {
+    rows.push(["Product URL", args.productUrl]);
+  }
+
+  if (args.tier === "managed-social") {
+    if (args.instagramHandle) rows.push(["Instagram", args.instagramHandle]);
+    if (args.tiktokHandle) rows.push(["TikTok", args.tiktokHandle]);
+    if (args.otherSocials) rows.push(["Other Socials", args.otherSocials]);
+    if (args.postingFrequency) {
+      rows.push([
+        "Posting Frequency",
+        formatPostingFrequency(args.postingFrequency, args.postingFrequencyCustom),
+      ]);
+    }
+    if (args.brandVoice) rows.push(["Brand Voice", args.brandVoice]);
+    if (args.audienceGoals) rows.push(["Audience / Goals", args.audienceGoals]);
+    if (args.bufferEmail) rows.push(["Buffer Email", args.bufferEmail]);
+  }
+
+  rows.push(["Prompt / Notes", args.prompt ?? "(none)"]);
+  rows.push(["Order ID", args.orderId]);
+  rows.push(["Intake ID", args.intakeId]);
+  rows.push(["Shopify Order", args.shopifyOrderName ?? args.shopifyOrderId]);
+  rows.push(["IP", args.ip]);
+  rows.push(["Paid At", args.paidAt]);
+
   const html = emailShell(
     `<h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400;color:#c9a860">PAID order — ${escapeHtml(tier.shortName)}</h1>
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%">${tableHtml}</table>`,
+    ${detailsTable(rows)}`,
     `PAID order: ${tier.shortName} from ${args.customerEmail}`,
   );
 
@@ -321,6 +402,70 @@ export async function sendAdminOrderNotification(args: {
     return true;
   } catch (e) {
     console.warn("[email] admin order notification send failed:", e);
+    return false;
+  }
+}
+
+/**
+ * Concierge-tier post-payment email for Managed Social customers ($600/mo).
+ *
+ * Fired from /api/order-paid right after the admin notification, only for
+ * `managed-social` orders. Walks the customer through Buffer setup so they
+ * know what to do between checkout completion and the first video going up.
+ */
+export async function sendManagedSocialPostPayment(args: {
+  to: string;
+  name: string;
+  brandName: string;
+  instagramHandle: string | null;
+  tiktokHandle: string | null;
+}): Promise<boolean> {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY missing, skipping managed-social welcome");
+    return false;
+  }
+  const handlesLine: string[] = [];
+  if (args.instagramHandle) handlesLine.push(`Instagram <strong style="color:#c9a860">${escapeHtml(args.instagramHandle)}</strong>`);
+  if (args.tiktokHandle) handlesLine.push(`TikTok <strong style="color:#c9a860">${escapeHtml(args.tiktokHandle)}</strong>`);
+  const handles = handlesLine.length ? handlesLine.join(" and ") : "your social accounts";
+
+  const html = emailShell(
+    `<h1 style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:400;color:#c9a860">Welcome, ${escapeHtml(args.name)}.</h1>
+
+    <p style="margin:0 0 16px">You're in. We're producing your first month of content for <strong style="color:#c9a860">${escapeHtml(args.brandName)}</strong> right now — 12 cinematic AI videos in mixed styles, posted on ${handles} via Buffer.</p>
+
+    <h2 style="margin:32px 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;color:#c9a860">Two things to do this week</h2>
+
+    <p style="margin:0 0 12px"><strong style="color:#f0dca0">1. Connect your IG + TikTok to Buffer</strong></p>
+    <p style="margin:0 0 20px;color:#a89472">We'll handle posting from there. Hit the button below and we'll walk you through the 5-minute setup.</p>
+    <p style="margin:0 0 28px">${goldButton(BUFFER_SETUP_MAILTO, "Buffer setup help")}</p>
+
+    <p style="margin:0 0 12px"><strong style="color:#f0dca0">2. Watch your inbox</strong></p>
+    <p style="margin:0 0 24px;color:#a89472">We'll begin posting within 24 hours of Buffer connection. End-of-month, you'll get an analytics report — views, clicks, conversions, top performers, and what we recommend doubling down on.</p>
+
+    <p style="margin:32px 0 16px;padding:14px 16px;border-left:2px solid #c9a860;color:#a89472;font-style:italic">All 12 videos are yours with full commercial use license. Cancel anytime — no minimum commitment.</p>
+
+    <p style="margin:32px 0 24px;color:#a89472">Questions? Just reply to this email or hit the button:</p>
+    <p style="margin:0 0 24px">${ghostButton(SUPPORT_MAILTO, "Talk to us")}</p>
+
+    <p style="margin:32px 0 0;color:#8c6f35;font-size:13px">— LuxMotion AI</p>`,
+    "Welcome to Managed Social — set up Buffer to start posting",
+  );
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: args.to,
+      subject: "Welcome to Managed Social — set up Buffer to start posting",
+      html,
+    });
+    if (error) {
+      console.warn("[email] managed-social welcome Resend error:", error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[email] managed-social welcome send failed:", e);
     return false;
   }
 }

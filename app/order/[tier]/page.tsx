@@ -2,10 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
-import { isTierSlug, TIERS, TIER_SLUGS } from "@/lib/tiers";
-import { OrderForm } from "./order-form";
+import { isTierSlug, TIERS, TIER_SLUGS, type TierSlug } from "@/lib/tiers";
+import { SingleForm } from "./forms/single-form";
+import { PremiumForm } from "./forms/premium-form";
+import { ContentPackForm } from "./forms/content-pack-form";
+import { ManagedSocialForm } from "./forms/managed-social-form";
+import type { Tier } from "@/lib/tiers";
+import type { ReactElement } from "react";
 
-// Pre-generate one static shell per tier; the form itself is a client component.
+// Pre-generate one static shell per tier; tier-specific form is a client
+// component dispatched by the slug.
 export function generateStaticParams() {
   return TIER_SLUGS.map((tier) => ({ tier }));
 }
@@ -24,6 +30,20 @@ export async function generateMetadata({
   };
 }
 
+function renderForm(slug: TierSlug, tier: Tier): ReactElement {
+  switch (slug) {
+    case "basic":
+    case "standard":
+      return <SingleForm tier={tier} />;
+    case "premium":
+      return <PremiumForm tier={tier} />;
+    case "content-pack":
+      return <ContentPackForm tier={tier} />;
+    case "managed-social":
+      return <ManagedSocialForm tier={tier} />;
+  }
+}
+
 export default async function OrderTierPage({
   params,
 }: {
@@ -34,9 +54,7 @@ export default async function OrderTierPage({
   return (
     <>
       <SiteNav />
-      <main>
-        <OrderForm tier={TIERS[tier]} />
-      </main>
+      <main>{renderForm(tier, TIERS[tier])}</main>
       <SiteFooter />
     </>
   );
