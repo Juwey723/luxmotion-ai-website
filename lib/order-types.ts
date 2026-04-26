@@ -1,4 +1,10 @@
-import type { TierSlug } from "@/lib/tiers";
+import type {
+  AdSpendRangeValue,
+  GrowthGoalValue,
+  IndustryValue,
+  RevenueRangeValue,
+  TierSlug,
+} from "@/lib/tiers";
 
 export type IntakeStatus = "intake" | "consumed";
 
@@ -24,12 +30,6 @@ export interface IntakeRecord {
   tier: TierSlug;
 
   // ─── Common to every tier ───────────────────────────────────────────
-  /**
-   * Single product / brand homepage URL.
-   *
-   * For content-pack, this is the FIRST URL in `productUrls` (kept here
-   * for backward compat with worker code that only reads productUrl).
-   */
   productUrl: string;
   brandName: string;
   prompt: string | null;
@@ -40,49 +40,49 @@ export interface IntakeRecord {
   status: IntakeStatus;
 
   // ─── Premium-only ───────────────────────────────────────────────────
-  /** Selected delivery format for premium tier. */
   premiumFormat?: PremiumFormat;
 
   // ─── Content Pack-only ──────────────────────────────────────────────
-  /** Up to 10 product URLs the customer wants featured across the 10 videos. */
   productUrls?: string[];
-  /** Distribution of the 10 videos across the 3 visual styles (must sum to 10). */
   styleMix?: StyleMix;
-  /** Customer's posting plan / context (informational only, helps formatting). */
   postingPlan?: string | null;
 
   // ─── Managed Social-only ────────────────────────────────────────────
-  /** e.g. "@brandname" */
   instagramHandle?: string | null;
-  /** e.g. "@brandname" */
   tiktokHandle?: string | null;
-  /** Freeform text — Twitter, YouTube, LinkedIn, etc. */
   otherSocials?: string | null;
   postingFrequency?: PostingFrequency;
-  /** Free-text description, only set when `postingFrequency === "custom"`. */
   postingFrequencyCustom?: string | null;
   brandVoice?: string | null;
   audienceGoals?: string | null;
   bufferEmail?: string | null;
 
+  // ─── Full Spectrum-only (Growth / Scale / Dominate) ────────────────
+  /** Phone number — FS leads always get a call back. */
+  phone?: string | null;
+  youtubeChannel?: string | null;
+  industry?: IndustryValue;
+  industryOther?: string | null;
+  monthlyRevenue?: RevenueRangeValue;
+  adSpend?: AdSpendRangeValue;
+  competitors?: string | null;
+  growthGoal?: GrowthGoalValue;
+  growthGoalOther?: string | null;
+  /** Free-text best-time-for-onboarding (e.g. "Tue mornings ET"). */
+  onboardingPreference?: string | null;
+
   // ─── Legacy ─────────────────────────────────────────────────────────
-  /**
-   * Old free-text "social handles" field used before we split into
-   * dedicated IG/TikTok inputs. Kept on the type so in-flight intakes
-   * already in KV deserialize cleanly.
-   */
   socialHandles?: string | null;
 }
 
 export type PaidOrderStatus = "pending" | "fulfilled" | "failed";
 
 export interface PaidOrderRecord {
-  /** Same UUID as the intake — we use it as the order ID end-to-end. */
   id: string;
   intakeId: string;
   tier: TierSlug;
 
-  // Denormalized intake data (so the worker only needs to read one key):
+  // Denormalized intake data ─────────────────────────────────────────
   productUrl: string;
   productUrls?: string[];
   brandName: string;
@@ -91,7 +91,7 @@ export interface PaidOrderRecord {
   email: string;
   ip: string;
 
-  // Tier-specific options (mirror IntakeRecord):
+  // Tier-specific options (mirror IntakeRecord) ──────────────────────
   premiumFormat?: PremiumFormat;
   styleMix?: StyleMix;
   postingPlan?: string | null;
@@ -103,25 +103,35 @@ export interface PaidOrderRecord {
   brandVoice?: string | null;
   audienceGoals?: string | null;
   bufferEmail?: string | null;
-  socialHandles?: string | null; // legacy
+  phone?: string | null;
+  youtubeChannel?: string | null;
+  industry?: IndustryValue;
+  industryOther?: string | null;
+  monthlyRevenue?: RevenueRangeValue;
+  adSpend?: AdSpendRangeValue;
+  competitors?: string | null;
+  growthGoal?: GrowthGoalValue;
+  growthGoalOther?: string | null;
+  onboardingPreference?: string | null;
+  socialHandles?: string | null;
 
-  // Shopify metadata captured by the webhook:
+  // Shopify metadata ─────────────────────────────────────────────────
   shopifyOrderId: string;
   shopifyOrderName?: string;
   shopifyOrderNumber?: number;
   shopifyAmount?: string;
   shopifyCurrency?: string;
-  paidAt: string; // ISO 8601
+  paidAt: string;
 
-  // Fulfillment metadata, set by /api/order-fulfill:
+  // Fulfillment metadata ─────────────────────────────────────────────
   status: PaidOrderStatus;
   videoUrl?: string;
   fileSizeMb?: number;
   fulfilledAt?: string;
   fulfillmentEmailSent?: boolean;
 
-  // Bookkeeping:
-  createdAt: string; // mirrors intake.createdAt for sorting
+  // Bookkeeping ──────────────────────────────────────────────────────
+  createdAt: string;
 }
 
 export const DEFAULT_STYLE_MIX: StyleMix = {

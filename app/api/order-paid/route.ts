@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
   sendAdminOrderNotification,
+  sendFullSpectrumPostPayment,
   sendManagedSocialPostPayment,
 } from "@/lib/emails";
 import type { IntakeRecord, PaidOrderRecord } from "@/lib/order-types";
-import { isTierSlug } from "@/lib/tiers";
+import { isTierSlug, TIERS } from "@/lib/tiers";
 
 // Shopify `orders/paid` webhook. We:
 //   1. Verify the X-Shopify-Hmac-Sha256 header against the raw body bytes.
@@ -167,6 +168,16 @@ export async function POST(req: NextRequest) {
     brandVoice: intake.brandVoice,
     audienceGoals: intake.audienceGoals,
     bufferEmail: intake.bufferEmail,
+    phone: intake.phone,
+    youtubeChannel: intake.youtubeChannel,
+    industry: intake.industry,
+    industryOther: intake.industryOther,
+    monthlyRevenue: intake.monthlyRevenue,
+    adSpend: intake.adSpend,
+    competitors: intake.competitors,
+    growthGoal: intake.growthGoal,
+    growthGoalOther: intake.growthGoalOther,
+    onboardingPreference: intake.onboardingPreference,
     socialHandles: intake.socialHandles,
 
     // Shopify metadata ───────────────────────────────────────────────
@@ -221,6 +232,16 @@ export async function POST(req: NextRequest) {
     brandVoice: order.brandVoice,
     audienceGoals: order.audienceGoals,
     bufferEmail: order.bufferEmail,
+    phone: order.phone,
+    youtubeChannel: order.youtubeChannel,
+    industry: order.industry,
+    industryOther: order.industryOther,
+    monthlyRevenue: order.monthlyRevenue,
+    adSpend: order.adSpend,
+    competitors: order.competitors,
+    growthGoal: order.growthGoal,
+    growthGoalOther: order.growthGoalOther,
+    onboardingPreference: order.onboardingPreference,
   }).catch((e) => console.warn("[order-paid] admin email failed:", e));
 
   // Managed Social customers get the concierge welcome email immediately so
@@ -235,6 +256,21 @@ export async function POST(req: NextRequest) {
       tiktokHandle: order.tiktokHandle ?? null,
     }).catch((e) =>
       console.warn("[order-paid] managed-social welcome email failed:", e),
+    );
+  }
+
+  // Full Spectrum customers get a concierge welcome email too — once Shopify
+  // variants are wired this fires. Today, /api/order-intake short-circuits FS
+  // tiers (TODO variants) and never reaches Shopify, so this email is dormant
+  // until the user creates the products.
+  if (TIERS[order.tier].kind === "full-spectrum") {
+    void sendFullSpectrumPostPayment({
+      to: order.email,
+      name: order.name,
+      brandName: order.brandName,
+      tier: order.tier,
+    }).catch((e) =>
+      console.warn("[order-paid] full-spectrum welcome email failed:", e),
     );
   }
 

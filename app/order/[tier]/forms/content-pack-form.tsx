@@ -100,7 +100,7 @@ export function ContentPackForm({ tier }: { tier: Tier }) {
 
     setSubmitting(true);
     try {
-      const checkoutUrl = await submitOrderIntake({
+      const result = await submitOrderIntake({
         tier: tier.slug,
         productUrls: productUrls.trim(),
         brandName: brandName.trim(),
@@ -110,7 +110,11 @@ export function ContentPackForm({ tier }: { tier: Tier }) {
         name: name.trim(),
         email: email.trim(),
       });
-      window.location.href = checkoutUrl;
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+      } else {
+        throw new Error("Checkout isn't ready for this tier yet.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed.");
       setSubmitting(false);

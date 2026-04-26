@@ -6,24 +6,37 @@ import type { ReactNode } from "react";
 import type { Tier } from "@/lib/tiers";
 import { cn } from "@/lib/utils";
 
+export interface IntakeResult {
+  intakeId: string;
+  /** Present when the tier's Shopify variant is wired — redirect the customer here. */
+  checkoutUrl?: string;
+  /** Present when the tier's Shopify variant is still TODO — show a "we'll be in touch" panel instead of redirecting. */
+  pendingSetup?: boolean;
+  message?: string;
+}
+
 /**
- * POSTs an intake payload, throws on non-OK / missing checkoutUrl, returns the
- * Shopify cart permalink (which already has `attributes[intake_id]` baked in).
- * Each tier form calls this from its submit handler.
+ * POSTs an intake payload, throws on non-OK, otherwise returns the structured
+ * result. Most tiers have real Shopify variants and the caller redirects to
+ * `result.checkoutUrl`. Full Spectrum tiers (variant ID = TODO_*) come back
+ * with `pendingSetup: true` instead.
  */
 export async function submitOrderIntake(
   payload: Record<string, unknown>,
-): Promise<string> {
+): Promise<IntakeResult> {
   const res = await fetch("/api/order-intake", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const data = (await res.json()) as { checkoutUrl?: string; error?: string };
-  if (!res.ok || !data.checkoutUrl) {
-    throw new Error(data.error ?? "Couldn't save your order. Try again.");
+  const data = (await res.json()) as IntakeResult & { error?: string };
+  if (!res.ok) {
+    throw new Error(data?.error ?? "Couldn't save your order. Try again.");
   }
-  return data.checkoutUrl;
+  if (!data.checkoutUrl && !data.pendingSetup) {
+    throw new Error("Server returned an unexpected response. Try again.");
+  }
+  return data;
 }
 
 export function FormPageBackground() {
@@ -60,20 +73,16 @@ export function TierHeader({ tier }: { tier: Tier }) {
       </motion.h1>
 
       <p className="font-serif-italic mt-6 text-xl text-bone/85 md:text-2xl">
-        ${tier.price}
+        ${tier.price.toLocaleString()}
         <span className="text-base text-bone/65">{tier.priceSuffix}</span>
         <span className="mx-3 text-gold-dim">·</span>
-        {tier.delivery} delivery
+        {tier.delivery}
       </p>
     </div>
   );
 }
 
-export function MarketingCard({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function MarketingCard({ children }: { children: ReactNode }) {
   return (
     <div className="mb-10 rounded-xl border border-gold/35 bg-card/70 p-6 lg:p-7 text-[14.5px] leading-relaxed text-bone/85">
       {children}
@@ -130,6 +139,50 @@ export function ErrorBox({ message }: { message: string }) {
   );
 }
 
+/**
+ * Shown on Full Spectrum forms after a successful intake submit. Replaces the
+ * checkout redirect because variant IDs aren't live yet — the customer needs
+ * to know we'll personally call them, not that the form silently failed.
+ */
+export function PendingSetupPanel({
+  email,
+  tierShortName,
+}: {
+  email: string;
+  tierShortName: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="mx-auto mt-8 flex w-full max-w-xl flex-col items-center gap-6 rounded-2xl border border-gold/55 bg-card p-8 text-center shadow-[0_20px_60px_-30px_rgba(201,168,96,0.4)]"
+    >
+      <p className="text-[11px] font-medium uppercase tracking-[0.42em] text-gold">
+        — Got it —
+      </p>
+      <h2 className="font-heading text-gold-gradient text-balance text-3xl tracking-tight md:text-4xl">
+        We&apos;ll call you within 24 hours.
+      </h2>
+      <p className="max-w-md text-balance text-[15px] leading-relaxed text-bone/85">
+        Your <strong className="text-gold">{tierShortName}</strong> request landed.
+        We&apos;ve sent a confirmation to <span className="text-gold">{email}</span>{" "}
+        and we&apos;ll personally reach out within 24 hours to schedule your
+        onboarding call. No payment moves until we&apos;ve talked.
+      </p>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+        Check your spam folder if it doesn&apos;t arrive.
+      </p>
+      <Link
+        href="/"
+        className="mt-2 inline-flex h-11 items-center justify-center rounded-full border border-gold/45 bg-transparent px-6 text-[12px] font-semibold uppercase tracking-[0.22em] text-bone transition-all hover:border-gold hover:bg-gold/[0.06]"
+      >
+        Back to home
+      </Link>
+    </motion.div>
+  );
+}
+
 // ─── Form-field primitives ────────────────────────────────────────────────
 
 export function Field({
@@ -145,7 +198,7 @@ export function Field({
 }: {
   label: string;
   hint?: string;
-  type?: "text" | "url" | "email";
+  type?: "text" | "url" | "email" | "tel";
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -159,9 +212,7 @@ export function Field({
         {label}
         {required && <span className="ml-1 text-gold-dim">*</span>}
       </span>
-      <div className={cn(
-        "flex h-12 w-full items-center rounded-md border border-border bg-ink-elevated transition-colors focus-within:border-gold/60 focus-within:ring-2 focus-within:ring-gold/30",
-      )}>
+      <div className="flex h-12 w-full items-center rounded-md border border-border bg-ink-elevated transition-colors focus-within:border-gold/60 focus-within:ring-2 focus-within:ring-gold/30">
         {prefix && (
           <span className="pl-4 pr-1 text-[14px] text-muted-foreground select-none">
             {prefix}

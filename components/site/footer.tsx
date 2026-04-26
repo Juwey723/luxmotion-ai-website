@@ -27,6 +27,18 @@ export function SiteFooter() {
               {l.label}
             </Link>
           ))}
+          <Link
+            href="/full-spectrum"
+            className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-gold"
+          >
+            Full Spectrum
+          </Link>
+          <Link
+            href="/sample"
+            className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-gold"
+          >
+            Free Sample
+          </Link>
         </nav>
       </div>
     </footer>

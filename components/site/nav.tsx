@@ -41,6 +41,7 @@ export function SiteNav() {
           {NAV_LINKS.slice(2).map((l) => (
             <NavLink key={l.href} href={l.href} label={l.label} />
           ))}
+          <NavLink href="/full-spectrum" label="Full Spectrum" badge="PRO" />
         </nav>
 
         <Link

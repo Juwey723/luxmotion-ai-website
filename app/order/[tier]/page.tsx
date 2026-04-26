@@ -7,6 +7,7 @@ import { SingleForm } from "./forms/single-form";
 import { PremiumForm } from "./forms/premium-form";
 import { ContentPackForm } from "./forms/content-pack-form";
 import { ManagedSocialForm } from "./forms/managed-social-form";
+import { FullSpectrumForm } from "./forms/full-spectrum-form";
 import type { Tier } from "@/lib/tiers";
 import type { ReactElement } from "react";
 
@@ -25,8 +26,8 @@ export async function generateMetadata({
   if (!isTierSlug(tier)) return { title: "Order" };
   const t = TIERS[tier];
   return {
-    title: `Order ${t.shortName} — $${t.price}${t.priceSuffix}`,
-    description: `${t.label}. ${t.delivery} delivery. Tell us about your product, pay through secure Shopify checkout, your video lands in your inbox.`,
+    title: `Order ${t.shortName} — $${t.price.toLocaleString()}${t.priceSuffix}`,
+    description: `${t.label}. ${t.delivery}. Tell us about your brand and we'll start production.`,
   };
 }
 
@@ -41,6 +42,10 @@ function renderForm(slug: TierSlug, tier: Tier): ReactElement {
       return <ContentPackForm tier={tier} />;
     case "managed-social":
       return <ManagedSocialForm tier={tier} />;
+    case "full-spectrum-growth":
+    case "full-spectrum-scale":
+    case "full-spectrum-dominate":
+      return <FullSpectrumForm tier={tier} />;
   }
 }
 
