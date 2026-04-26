@@ -3,20 +3,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
-import {
-  ORDER_URL_BASIC,
-  ORDER_URL_DEFAULT,
-  ORDER_URL_PREMIUM,
-  ORDER_URL_STANDARD,
-  PRICING,
-} from "@/lib/constants";
+import Link from "next/link";
+import { intakePath, SINGLE_TIERS } from "@/lib/tiers";
 import { cn } from "@/lib/utils";
-
-const TIER_URLS: Record<"Basic" | "Standard" | "Premium", string> = {
-  Basic: ORDER_URL_BASIC,
-  Standard: ORDER_URL_STANDARD,
-  Premium: ORDER_URL_PREMIUM,
-};
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -287,40 +276,41 @@ function UpsellCard() {
       </div>
 
       <div className="mt-9 grid gap-4 md:grid-cols-3">
-        {PRICING.map((p) => (
-          <div
-            key={p.tier}
-            className={cn(
-              "flex flex-col items-start gap-3 rounded-xl border bg-ink-elevated/80 p-5 transition-colors",
-              p.popular
-                ? "border-gold/55 ring-1 ring-gold/30"
-                : "border-border hover:border-gold/40",
-            )}
-          >
-            <div className="flex w-full items-baseline justify-between">
-              <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                {p.tier}
-              </span>
-              <span className="font-heading text-2xl text-gold-gradient">
-                ${p.price}
-              </span>
-            </div>
-            <p className="text-[13px] leading-snug text-bone/85">{p.name}</p>
-            <a
-              href={TIER_URLS[p.tier]}
-              target="_blank"
-              rel="noopener noreferrer"
+        {SINGLE_TIERS.map((t) => {
+          const productLine = t.label.replace(`${t.shortName} — `, "");
+          return (
+            <div
+              key={t.slug}
               className={cn(
-                "mt-auto inline-flex h-10 w-full items-center justify-center rounded-full px-4 text-[11px] font-semibold uppercase tracking-[0.22em] transition-all",
-                p.popular
-                  ? "bg-gold text-ink-deepest hover:bg-gold-light"
-                  : "border border-gold/40 text-bone hover:border-gold hover:bg-gold/[0.06]",
+                "flex flex-col items-start gap-3 rounded-xl border bg-ink-elevated/80 p-5 transition-colors",
+                t.popular
+                  ? "border-gold/55 ring-1 ring-gold/30"
+                  : "border-border hover:border-gold/40",
               )}
             >
-              Order {p.tier}
-            </a>
-          </div>
-        ))}
+              <div className="flex w-full items-baseline justify-between">
+                <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  {t.shortName}
+                </span>
+                <span className="font-heading text-2xl text-gold-gradient">
+                  ${t.price}
+                </span>
+              </div>
+              <p className="text-[13px] leading-snug text-bone/85">{productLine}</p>
+              <Link
+                href={intakePath(t.slug)}
+                className={cn(
+                  "mt-auto inline-flex h-10 w-full items-center justify-center rounded-full px-4 text-[11px] font-semibold uppercase tracking-[0.22em] transition-all",
+                  t.popular
+                    ? "bg-gold text-ink-deepest hover:bg-gold-light"
+                    : "border border-gold/40 text-bone hover:border-gold hover:bg-gold/[0.06]",
+                )}
+              >
+                Order {t.shortName}
+              </Link>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -355,14 +345,12 @@ function ErrorPanel({
         >
           Try again
         </button>
-        <a
-          href={ORDER_URL_DEFAULT}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/order/basic"
           className="inline-flex h-11 items-center justify-center rounded-full bg-gold px-6 text-[12px] font-semibold uppercase tracking-[0.22em] text-ink-deepest transition-all hover:bg-gold-light"
         >
           Order direct from $30
-        </a>
+        </Link>
       </div>
       <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
         Or DM us @luxmotionai

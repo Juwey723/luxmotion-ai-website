@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { FadeIn } from "@/components/site/fade-in";
-import { ORDER_URL_DEFAULT } from "@/lib/constants";
 
 export function FinalCTA() {
   return (
@@ -21,17 +21,15 @@ export function FinalCTA() {
           by tomorrow.
         </h2>
         <p className="mt-7 max-w-xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
-          Place an order through our secure Shopify checkout — instant
-          confirmation, 24-hour turnaround, fully licensed output.
+          Tell us about your product, pay through secure Shopify checkout, and
+          your finished video lands in your inbox within 24 hours.
         </p>
-        <a
-          href={ORDER_URL_DEFAULT}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/order/basic"
           className="mt-10 inline-flex h-14 items-center justify-center rounded-full bg-gold px-9 text-[13px] font-semibold uppercase tracking-[0.26em] text-ink-deepest shadow-[0_12px_40px_-10px_rgba(201,168,96,0.6)] transition-all hover:-translate-y-px hover:bg-gold-light hover:shadow-[0_16px_50px_-10px_rgba(240,220,160,0.7)]"
         >
           Order Now
-        </a>
+        </Link>
       </div>
     </FadeIn>
   );

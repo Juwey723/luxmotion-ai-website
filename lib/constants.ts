@@ -2,18 +2,8 @@
 // metadataBase in app/layout.tsx to "https://luxmotionai.com".
 export const SITE_URL = "https://luxmotion-ai-website.vercel.app";
 
-// Shopify checkout URLs — direct add-to-cart links per pricing tier.
-// Each opens Shopify checkout with the tier's variant pre-loaded.
-export const ORDER_URL_BASIC =
-  "https://checkout.luxmotionai.com/cart/48568804835545:1";
-export const ORDER_URL_STANDARD =
-  "https://checkout.luxmotionai.com/cart/48568806047961:1";
-export const ORDER_URL_PREMIUM =
-  "https://checkout.luxmotionai.com/cart/48568807096537:1";
-
-// Generic "Order Now" CTAs (nav, hero, single-service card, final CTA)
-// all point at Basic — entry price draws the click; buyers can upsell on the cart page.
-export const ORDER_URL_DEFAULT = ORDER_URL_BASIC;
+// Pricing tier data has moved to lib/tiers.ts (single source of truth for the
+// 5 tiers + Shopify variant IDs + intake-form metadata).
 
 // TODO: replace with real contact (mailto / Instagram) once available.
 export const COMING_SOON_HREF = "#";
@@ -42,7 +32,8 @@ export const SERVICES: readonly Service[] = [
     blurb:
       "Cinematic product videos with hyper-realistic motion. 10–15 seconds, 1080P, 24-hour delivery.",
     priceFrom: 30,
-    cta: { label: "Order from $30", href: ORDER_URL_BASIC, external: true },
+    // Internal route now — customer fills the intake form before checkout.
+    cta: { label: "Order from $30", href: "/order/basic", external: false },
     badge: null,
   },
   {
@@ -102,60 +93,6 @@ export const STEPS = [
     body: "MP4 delivered in 24 hours, licensed for commercial use.",
   },
 ] as const;
-
-export type PricingTier = {
-  tier: "Basic" | "Standard" | "Premium";
-  name: string;
-  price: number;
-  features: readonly string[];
-  popular: boolean;
-  cartUrl: string;
-};
-
-export const PRICING: readonly PricingTier[] = [
-  {
-    tier: "Basic",
-    name: "10-Second Hyper Motion Ad",
-    price: 30,
-    features: [
-      "One 10-second video",
-      "1080P resolution",
-      "1 revision",
-      "24-hour delivery",
-      "Commercial use license",
-    ],
-    popular: false,
-    cartUrl: ORDER_URL_BASIC,
-  },
-  {
-    tier: "Standard",
-    name: "15-Second Hyper Motion Ad",
-    price: 60,
-    features: [
-      "One 15-second video",
-      "1080P resolution",
-      "2 revisions",
-      "24-hour delivery",
-      "Commercial use license",
-    ],
-    popular: true,
-    cartUrl: ORDER_URL_STANDARD,
-  },
-  {
-    tier: "Premium",
-    name: "Multi-Video Package",
-    price: 90,
-    features: [
-      "Three 10-second OR two 15-second videos",
-      "1080P resolution",
-      "3 revisions",
-      "12-hour delivery",
-      "Commercial use license",
-    ],
-    popular: false,
-    cartUrl: ORDER_URL_PREMIUM,
-  },
-];
 
 export const FAQS = [
   {

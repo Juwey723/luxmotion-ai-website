@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Gloock, Instrument_Serif, Outfit } from "next/font/google";
 import "./globals.css";
-import { FAQS, PRICING, SITE_URL } from "@/lib/constants";
+import { FAQS, SITE_URL } from "@/lib/constants";
+import { intakePath, TIER_SLUGS, TIERS } from "@/lib/tiers";
 
 // Gloock is the LCP-critical font (hero h1). preload + swap is already
 // next/font's default — stating both explicitly so it's not silently
@@ -81,14 +82,20 @@ const serviceLd = {
   provider: { "@type": "Organization", name: "LuxMotion AI", url: SITE_URL },
   areaServed: "Worldwide",
   description: SITE_DESCRIPTION,
-  offers: PRICING.map((p) => ({
-    "@type": "Offer",
-    name: p.name,
-    price: String(p.price),
-    priceCurrency: "USD",
-    url: p.cartUrl,
-    availability: "https://schema.org/InStock",
-  })),
+  offers: TIER_SLUGS.map((slug) => {
+    const t = TIERS[slug];
+    return {
+      "@type": "Offer",
+      name: t.label,
+      price: String(t.price),
+      priceCurrency: "USD",
+      url: `${SITE_URL}${intakePath(slug)}`,
+      availability: "https://schema.org/InStock",
+      ...(t.priceSuffix === "/mo"
+        ? { priceSpecification: { "@type": "UnitPriceSpecification", price: t.price, priceCurrency: "USD", referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" } } }
+        : {}),
+    };
+  }),
 };
 
 const faqLd = {

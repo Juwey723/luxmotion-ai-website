@@ -1,10 +1,5 @@
 import { Resend } from "resend";
-import {
-  ORDER_URL_BASIC,
-  ORDER_URL_PREMIUM,
-  ORDER_URL_STANDARD,
-  PRICING,
-} from "@/lib/constants";
+import { intakePath, SINGLE_TIERS, TIERS, type TierSlug } from "@/lib/tiers";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -18,12 +13,11 @@ const FROM = process.env.RESEND_FROM_EMAIL ?? "LuxMotion AI <onboarding@resend.d
 const ADMIN_EMAIL = "jawaduweyda2@gmail.com";
 const SITE = "https://www.luxmotionai.com";
 const PRICING_URL = `${SITE}/#pricing`;
+const REVIEW_MAILTO = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent("Review: LuxMotion AI video")}`;
 
-const TIER_URL: Record<"Basic" | "Standard" | "Premium", string> = {
-  Basic: ORDER_URL_BASIC,
-  Standard: ORDER_URL_STANDARD,
-  Premium: ORDER_URL_PREMIUM,
-};
+function intakeAbsoluteUrl(slug: TierSlug): string {
+  return `${SITE}${intakePath(slug)}`;
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -74,12 +68,21 @@ function goldButton(href: string, label: string): string {
   return `<a href="${escapeHtml(href)}" style="display:inline-block;background:#c9a860;color:#070707;text-decoration:none;padding:14px 28px;border-radius:9999px;font-weight:600;font-size:13px;letter-spacing:0.18em;text-transform:uppercase">${escapeHtml(label)}</a>`;
 }
 
+function ghostButton(href: string, label: string): string {
+  return `<a href="${escapeHtml(href)}" style="display:inline-block;border:1px solid rgba(201,168,96,0.5);color:#f5f0e6;text-decoration:none;padding:13px 26px;border-radius:9999px;font-weight:600;font-size:13px;letter-spacing:0.18em;text-transform:uppercase">${escapeHtml(label)}</a>`;
+}
+
 function tierMiniRow(): string {
-  return PRICING.map(
-    (p) =>
-      `<a href="${escapeHtml(TIER_URL[p.tier])}" style="display:inline-block;margin:4px 6px 4px 0;padding:8px 14px;border:1px solid rgba(201,168,96,0.5);border-radius:9999px;color:#f5f0e6;text-decoration:none;font-size:12px;letter-spacing:0.16em;text-transform:uppercase">${escapeHtml(p.tier)} · $${p.price}</a>`,
+  // Email upsell shows the 3 single-shot tiers — bundles + recurring service
+  // are bigger commitments and don't make sense as one-line upsells in a
+  // post-fulfillment email.
+  return SINGLE_TIERS.map(
+    (t) =>
+      `<a href="${escapeHtml(intakeAbsoluteUrl(t.slug))}" style="display:inline-block;margin:4px 6px 4px 0;padding:8px 14px;border:1px solid rgba(201,168,96,0.5);border-radius:9999px;color:#f5f0e6;text-decoration:none;font-size:12px;letter-spacing:0.16em;text-transform:uppercase">${escapeHtml(t.shortName)} · $${t.price}</a>`,
   ).join("");
 }
+
+// ─── Sample-pipeline emails (existing) ────────────────────────────────────
 
 export async function sendCustomerConfirmation(args: {
   to: string;
@@ -205,6 +208,119 @@ export async function sendCustomerFulfillment(args: {
     return true;
   } catch (e) {
     console.warn("[email] fulfillment send failed:", e);
+    return false;
+  }
+}
+
+// ─── Paid-order emails (new) ──────────────────────────────────────────────
+
+export async function sendCustomerOrderFulfillment(args: {
+  to: string;
+  name: string;
+  brandName: string;
+  tier: TierSlug;
+  videoUrl: string;
+}): Promise<boolean> {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY missing, skipping order fulfillment");
+    return false;
+  }
+  const tier = TIERS[args.tier];
+  const html = emailShell(
+    `<h1 style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:400;color:#c9a860">Hey ${escapeHtml(args.name)},</h1>
+    <p style="margin:0 0 16px">Your <strong style="color:#c9a860">${escapeHtml(tier.shortName)}</strong> order is complete — branded for <strong style="color:#c9a860">${escapeHtml(args.brandName)}</strong>.</p>
+    <p style="margin:0 0 28px">${goldButton(args.videoUrl, "Watch + download")}</p>
+    <p style="margin:0 0 16px">Direct download link if you need it:<br/><a href="${escapeHtml(args.videoUrl)}" style="color:#c9a860;word-break:break-all;font-size:13px">${escapeHtml(args.videoUrl)}</a></p>
+    <p style="margin:32px 0 24px;color:#a89472">Thanks for ordering with LuxMotion AI. If this hit, leaving a quick line of feedback helps a lot:</p>
+    <p style="margin:0 0 24px">${ghostButton(REVIEW_MAILTO, "Leave a review")}</p>
+    <p style="margin:32px 0 0;color:#8c6f35;font-size:13px">— LuxMotion AI</p>`,
+    `Your LuxMotion AI ${tier.shortName} video is ready`,
+  );
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: args.to,
+      subject: "Your LuxMotion AI video is ready",
+      html,
+    });
+    if (error) {
+      console.warn("[email] order fulfillment Resend error:", error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[email] order fulfillment send failed:", e);
+    return false;
+  }
+}
+
+export async function sendAdminOrderNotification(args: {
+  orderId: string;
+  intakeId: string;
+  tier: TierSlug;
+  brandName: string;
+  productUrl: string;
+  prompt: string | null;
+  socialHandles: string | null;
+  customerName: string;
+  customerEmail: string;
+  ip: string;
+  shopifyOrderId: string;
+  shopifyOrderName?: string;
+  shopifyAmount?: string;
+  shopifyCurrency?: string;
+  paidAt: string;
+}): Promise<boolean> {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY missing, skipping admin order notification");
+    return false;
+  }
+  const tier = TIERS[args.tier];
+  const amountStr =
+    args.shopifyAmount && args.shopifyCurrency
+      ? `${args.shopifyAmount} ${args.shopifyCurrency}`
+      : `$${tier.price}${tier.priceSuffix}`;
+  const rows: Array<[string, string]> = [
+    ["Tier", tier.label],
+    ["Amount", amountStr],
+    ["Brand", args.brandName],
+    ["Customer", `${args.customerName} <${args.customerEmail}>`],
+    ["Product URL", args.productUrl],
+    ["Prompt / Notes", args.prompt ?? "(none)"],
+    ["Social Handles", args.socialHandles ?? "(n/a)"],
+    ["Order ID", args.orderId],
+    ["Intake ID", args.intakeId],
+    ["Shopify Order", args.shopifyOrderName ?? args.shopifyOrderId],
+    ["IP", args.ip],
+    ["Paid At", args.paidAt],
+  ];
+  const tableHtml = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px 8px 0;color:#8c6f35;text-transform:uppercase;font-size:11px;letter-spacing:0.18em;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:8px 0;color:#f5f0e6;word-break:break-all;font-size:14px">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  const html = emailShell(
+    `<h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400;color:#c9a860">PAID order — ${escapeHtml(tier.shortName)}</h1>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%">${tableHtml}</table>`,
+    `PAID order: ${tier.shortName} from ${args.customerEmail}`,
+  );
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: ADMIN_EMAIL,
+      subject: `[LuxMotion AI] PAID order: ${tier.shortName} from ${args.customerEmail}`,
+      html,
+    });
+    if (error) {
+      console.warn("[email] admin order notification Resend error:", error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[email] admin order notification send failed:", e);
     return false;
   }
 }

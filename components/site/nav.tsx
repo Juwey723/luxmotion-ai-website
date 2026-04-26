@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { NAV_LINKS, ORDER_URL_DEFAULT } from "@/lib/constants";
+import { NAV_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export function SiteNav() {
@@ -43,14 +43,12 @@ export function SiteNav() {
           ))}
         </nav>
 
-        <a
-          href={ORDER_URL_DEFAULT}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/order/basic"
           className="inline-flex h-9 items-center rounded-full bg-gold px-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-deepest transition-colors hover:bg-gold-light md:h-10 md:px-5 md:text-[12px]"
         >
           Order Now
-        </a>
+        </Link>
       </div>
     </header>
   );
