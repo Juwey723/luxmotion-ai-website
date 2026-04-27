@@ -150,6 +150,11 @@ export interface PaidOrderRecord {
   fulfilledAt?: string;
   fulfillmentEmailSent?: boolean;
 
+  /** Multi-video tiers accumulate Blob URLs here as `/api/order-fulfill-partial` lands each one. The final video also goes into `videoUrl` when `/api/order-fulfill` finalizes. */
+  gallery?: string[];
+  videosCompleted?: number;
+  videosNeeded?: number;
+
   // Buffer integration ───────────────────────────────────────────────
   /**
    * Buffer profile IDs the customer's social channels are connected under.
