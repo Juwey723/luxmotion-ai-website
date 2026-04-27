@@ -77,6 +77,26 @@ export interface IntakeRecord {
 
 export type PaidOrderStatus = "pending" | "fulfilled" | "failed";
 
+/**
+ * One scheduled / posted Buffer update tied to a specific delivered video.
+ * Appended to `paid-order:<id>.bufferPosts[]` each time `/api/buffer-post`
+ * successfully schedules a post on a customer's connected channel.
+ */
+export interface BufferPostRecord {
+  /** Buffer's `updates[].id` from the create response. */
+  updateId: string;
+  /** The Buffer profile (channel) this post is scheduled to. */
+  profileId: string;
+  /** ISO 8601 timestamp Buffer scheduled the post for (or scheduled-at-now if posted immediately). */
+  scheduledAt: string;
+  /** Vercel Blob URL of the video that was posted. */
+  videoUrl: string;
+  /** Caption + hashtags submitted to Buffer. */
+  caption: string;
+  /** Service the profile belongs to: "instagram" / "tiktok" / "twitter" / etc. */
+  service?: string;
+}
+
 export interface PaidOrderRecord {
   id: string;
   intakeId: string;
@@ -129,6 +149,16 @@ export interface PaidOrderRecord {
   fileSizeMb?: number;
   fulfilledAt?: string;
   fulfillmentEmailSent?: boolean;
+
+  // Buffer integration ───────────────────────────────────────────────
+  /**
+   * Buffer profile IDs the customer's social channels are connected under.
+   * Set manually by the admin (James) after the customer connects their
+   * accounts during Buffer onboarding. v2 will be a real OAuth flow.
+   */
+  bufferProfileIds?: string[];
+  /** History of Buffer posts scheduled for this order's videos. */
+  bufferPosts?: BufferPostRecord[];
 
   // Bookkeeping ──────────────────────────────────────────────────────
   createdAt: string;

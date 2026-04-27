@@ -510,11 +510,11 @@ export async function sendManagedSocialPostPayment(args: {
   const html = emailShell(
     `<h1 style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:400;color:#c9a860">Welcome, ${escapeHtml(args.name)}.</h1>
     <p style="margin:0 0 16px">You're in. We're producing your first month of content for <strong style="color:#c9a860">${escapeHtml(args.brandName)}</strong> right now — 12 cinematic AI videos in mixed styles, posted on ${handles} via Buffer.</p>
-    <h2 style="margin:32px 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;color:#c9a860">Two things to do this week</h2>
-    <p style="margin:0 0 12px"><strong style="color:#f0dca0">1. Connect your IG + TikTok to Buffer</strong></p>
-    <p style="margin:0 0 20px;color:#a89472">We'll handle posting from there. Hit the button below and we'll walk you through the 5-minute setup.</p>
-    <p style="margin:0 0 28px">${goldButton(BUFFER_SETUP_MAILTO, "Buffer setup help")}</p>
-    <p style="margin:0 0 12px"><strong style="color:#f0dca0">2. Watch your inbox</strong></p>
+    <h2 style="margin:32px 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;color:#c9a860">Step 1 — Connect your social accounts (5 minutes)</h2>
+    <p style="margin:0 0 16px;color:#a89472">We use Buffer to schedule posts on your behalf. Reply to this email with the email + handles you'd like us to connect, and we'll add your Instagram and TikTok to our scheduling queue.</p>
+    <p style="margin:0 0 12px;color:#a89472">Once connected, your videos start posting on the cadence you picked at checkout. You don't need to do anything else — we handle posting end-to-end.</p>
+    <p style="margin:0 0 28px">${goldButton(BUFFER_SETUP_MAILTO, "Connect via Buffer")}</p>
+    <h2 style="margin:24px 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;color:#c9a860">Step 2 — Watch your inbox</h2>
     <p style="margin:0 0 24px;color:#a89472">We'll begin posting within 24 hours of Buffer connection. End-of-month, you'll get an analytics report — views, clicks, conversions, top performers, and what we recommend doubling down on.</p>
     <p style="margin:32px 0 16px;padding:14px 16px;border-left:2px solid #c9a860;color:#a89472;font-style:italic">All 12 videos are yours with full commercial use license. Cancel anytime — no minimum commitment.</p>
     <p style="margin:32px 0 24px;color:#a89472">Questions? Just reply to this email or hit the button:</p>
@@ -626,6 +626,9 @@ export async function sendFullSpectrumPostPayment(args: {
   const html = emailShell(
     `<h1 style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:400;color:#c9a860">Welcome, ${escapeHtml(args.name)}.</h1>
     <p style="margin:0 0 16px">Your <strong style="color:#c9a860">Full Spectrum ${escapeHtml(tier.shortName)}</strong> subscription is active. We're already orchestrating the first 90 days for <strong style="color:#c9a860">${escapeHtml(args.brandName)}</strong>.</p>
+    <h2 style="margin:32px 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;color:#c9a860">Step 1 — Connect your social accounts (5 minutes)</h2>
+    <p style="margin:0 0 16px;color:#a89472">We use Buffer to schedule posts across every channel in your tier. Reply to this email with the handles you want us to connect (Instagram, TikTok, YouTube, etc.) and we'll add them to the queue today.</p>
+    <p style="margin:0 0 28px">${goldButton(BUFFER_SETUP_MAILTO, "Connect via Buffer")}</p>
     <h2 style="margin:32px 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:400;color:#c9a860">Week 1</h2>
     <p style="margin:0 0 8px;color:#a89472">• 60-min onboarding call (we'll email to schedule within 24h)</p>
     <p style="margin:0 0 8px;color:#a89472">• Brand voice + audience deep-dive</p>
